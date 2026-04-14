@@ -39,7 +39,9 @@ fi
 # Detect latest tag
 LATEST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1))
 echo -e "${CYAN}Checking out stable version: ${LATEST_TAG}${NC}"
-git checkout "$LATEST_TAG"
+git reset --hard HEAD
+git clean -fd
+git checkout -f "$LATEST_TAG"
 
 echo -e "${YELLOW}Installing dependencies...${NC}"
 bun install --frozen-lockfile
