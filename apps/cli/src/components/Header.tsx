@@ -69,7 +69,7 @@ export function Header({
       {/* Brand row */}
       <Box>
         <Text bold color="magentaBright">{"⬡  nirapod-audit"}</Text>
-        <Text dimColor>{"  v0.1.0"}</Text>
+        <Text dimColor>{"  v0.2.0"}</Text>
         {targetPath && (
           <>
             <Text dimColor>{"  ·  "}</Text>

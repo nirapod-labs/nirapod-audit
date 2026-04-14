@@ -58,7 +58,7 @@ function parseOutputFormat(argv: string[]): { format: OutputFormat; rest: string
 
 function showHelp(): never {
   console.log(`
-nirapod-audit v0.1.0 — Deterministic C/C++ auditor
+nirapod-audit v0.2.0 — Deterministic C/C++ auditor
 
 Usage:
   nirapod-audit                  Interactive home screen

@@ -75,7 +75,7 @@ export async function runReportMode(
 
   // ── Header ──
   console.log();
-  console.log(`${C.magenta}${C.bold}  ▓▓ nirapod-audit${C.reset}${C.dim} v0.1.0${C.reset}`);
+  console.log(`${C.magenta}${C.bold}  ▓▓ nirapod-audit${C.reset}${C.dim} v0.2.0${C.reset}`);
   console.log(`${C.dim}  Detailed Audit Report — ${targetName}${C.reset}`);
   console.log(`${C.dim}  ${"─".repeat(60)}${C.reset}`);
   console.log();

@@ -129,7 +129,7 @@ export function buildSarif(
         tool: {
           driver: {
             name: "nirapod-audit",
-            version: "0.1.0",
+            version: "0.2.0",
             informationUri: "https://github.com/nirapod/nirapod-audit",
             rules,
           },

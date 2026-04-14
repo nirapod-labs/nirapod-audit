@@ -85,7 +85,7 @@ function BigHeader(): React.ReactElement {
         <Box flexDirection="column">
           <Text bold color="magentaBright">
             {"⬡  nirapod-audit"}
-            <Text dimColor bold={false}>{"  v0.1.0"}</Text>
+            <Text dimColor bold={false}>{"  v0.2.0"}</Text>
           </Text>
           <Text dimColor>{"Deterministic C/C++ linter · NASA JPL · Crypto · Doxygen · Memory"}</Text>
         </Box>
