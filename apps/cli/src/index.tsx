@@ -26,6 +26,7 @@ import { runHome } from "./commands/home.js";
 import { runAgentMode } from "./output/agent.js";
 import { runSarifMode } from "./output/sarif.js";
 import { runReportMode } from "./output/report.js";
+import { runMarkdownMode } from "./output/markdown.js";
 
 /**
  * Supported output formats.
@@ -35,10 +36,11 @@ import { runReportMode } from "./output/report.js";
  * `"tui"` renders via Ink TUI with live progress bar.
  * `"json"` emits NDJSON to stdout.
  * `"sarif"` emits SARIF 2.1.0 JSON.
+ * `"markdown"` emits a rich headless Markdown summary to the filesystem.
  */
-type OutputFormat = "report" | "tui" | "json" | "sarif";
+type OutputFormat = "report" | "tui" | "json" | "sarif" | "markdown";
 
-const VALID_FORMATS = new Set<string>(["report", "tui", "human", "json", "sarif"]);
+const VALID_FORMATS = new Set<string>(["report", "tui", "human", "json", "sarif", "markdown"]);
 
 /**
  * Extracts `--output <format>` from argv (defaults to `"human"`).
@@ -157,6 +159,9 @@ if (!command) {
         break;
       case "tui":
         runAuditTui(resolvedTarget, config, configPath);
+        break;
+      case "markdown":
+        runMarkdownMode(resolvedTarget, config);
         break;
       default:
         runReportMode(resolvedTarget, config);
