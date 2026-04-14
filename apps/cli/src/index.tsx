@@ -4,9 +4,18 @@
  * @brief CLI entry point for nirapod-audit.
  *
  * @remarks
- * Thin entry point that parses arguments and routes to command handlers.
- * All TUI rendering lives in `commands/audit.tsx`, all output formatting
- * in `output/`, and all display components in `components/`.
+ * Routing:
+ *   nirapod-audit               → interactive home TUI
+ *   nirapod-audit audit <path>  → TUI audit (default) or other output format
+ *   nirapod-audit rules         → rule catalog
+ *   nirapod-audit explain <id>  → rule explanation
+ *
+ * Output formats:
+ *   tui       (default) — Ink TUI, auto-writes .md report on completion
+ *   markdown  — headless, writes nirapod-report-*.md, compact stdout
+ *   json      — raw NDJSON stream
+ *   sarif     — SARIF 2.1.0 single JSON document
+ *   report    — ANSI terminal report (legacy)
  *
  * @author Nirapod Team
  * @date 2026
@@ -20,102 +29,77 @@ import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { loadConfig } from "@nirapod-audit/core";
 import { runAuditTui } from "./commands/audit.js";
+import { runHome } from "./commands/home.js";
 import { runRulesHuman, runRulesJson } from "./commands/rules.js";
 import { runExplainHuman, runExplainJson } from "./commands/explain.js";
-import { runHome } from "./commands/home.js";
 import { runAgentMode } from "./output/agent.js";
 import { runSarifMode } from "./output/sarif.js";
 import { runReportMode } from "./output/report.js";
 import { runMarkdownMode } from "./output/markdown.js";
 
-/**
- * Supported output formats.
- *
- * @remarks
- * `"report"` outputs a detailed coloured report to stdout (default).
- * `"tui"` renders via Ink TUI with live progress bar.
- * `"json"` emits NDJSON to stdout.
- * `"sarif"` emits SARIF 2.1.0 JSON.
- * `"markdown"` emits a rich headless Markdown summary to the filesystem.
- */
-type OutputFormat = "report" | "tui" | "json" | "sarif" | "markdown";
+type OutputFormat = "tui" | "markdown" | "json" | "sarif" | "report";
 
-const VALID_FORMATS = new Set<string>(["report", "tui", "human", "json", "sarif", "markdown"]);
+const VALID_FORMATS = new Set<string>(["tui", "human", "markdown", "json", "sarif", "report"]);
 
-/**
- * Extracts `--output <format>` from argv (defaults to `"human"`).
- *
- * @param argv - Raw CLI arguments.
- * @returns Parsed format and remaining arguments.
- */
 function parseOutputFormat(argv: string[]): { format: OutputFormat; rest: string[] } {
   const idx = argv.indexOf("--output");
   if (idx >= 0 && argv[idx + 1]) {
     const value = argv[idx + 1] as string;
     if (!VALID_FORMATS.has(value)) {
-      console.error(`error: unsupported format "${value}". Use: report, tui, json, sarif`);
+      console.error(`error: unsupported format "${value}". Use: tui, markdown, json, sarif, report`);
       process.exit(2);
     }
     const rest = [...argv.slice(0, idx), ...argv.slice(idx + 2)];
-    // "human" is an alias for "tui"
-    const fmt = value === "human" ? "tui" : value;
-    return { format: fmt as OutputFormat, rest };
+    const fmt: OutputFormat = value === "human" ? "tui" : value as OutputFormat;
+    return { format: fmt, rest };
   }
-  return { format: "report", rest: argv };
+  return { format: "tui", rest: argv };
 }
 
-/**
- * Prints the help text and exits.
- */
 function showHelp(): never {
   console.log(`
-nirapod-audit v0.1.0 — Deterministic C/C++ code auditor
+nirapod-audit v0.1.0 — Deterministic C/C++ auditor
 
 Usage:
+  nirapod-audit                  Interactive home screen
   nirapod-audit audit <path>     Audit a file or directory
   nirapod-audit rules            List all rules
   nirapod-audit explain <id>     Explain a rule in detail
 
-Options:
-  --output report                Detailed audit report (default)
-  --output tui                   Live TUI with progress bar
-  --output json                  Machine-readable NDJSON output
-  --output sarif                 SARIF 2.1.0 for GitHub Code Scanning
-  --help, -h                     Show this help message
+Output formats (--output <format>):
+  tui        Live TUI with streaming diagnostics, auto-saves .md (default)
+  markdown   Headless: writes nirapod-report-*.md, compact stdout summary
+  json       NDJSON stream — one JSON event per line
+  sarif      SARIF 2.1.0 — for GitHub Code Scanning
+  report     ANSI terminal report
 
-Output Formats:
-  report (default) Detailed coloured report: categories, top rules, per-file.
-  tui              Live TUI with progress bar and streaming diagnostics.
-  json             NDJSON: one JSON object per line to stdout.
-  sarif            SARIF 2.1.0: single JSON document for GitHub Actions.
-
-Config:
-  Place nirapod-audit.toml in your project root to configure:
-  platform, max_function_lines, ignore paths, rule overrides, etc.
-  See nirapod-audit.toml.example for all options.
-
-Incremental Mode:
-  File hashes are cached in .nirapod/audit/cache.json.
-  Unchanged files are skipped on subsequent runs.
-  Delete the cache file to force a full re-audit.
+Examples:
+  nirapod-audit audit ./src
+  nirapod-audit audit ./src --output markdown
+  nirapod-audit audit ./src --output sarif > audit.sarif
+  nirapod-audit explain NRP-NASA-006
+  nirapod-audit rules --output json
 `);
   process.exit(0);
 }
 
-// --- Main ---
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 const args = process.argv.slice(2);
 const { format, rest } = parseOutputFormat(args);
 const command = rest[0];
 
+// No command → interactive home
+if (!command) {
+  runHome();
+  process.exit(0);
+}
+
 if (command === "--help" || command === "-h") {
   showHelp();
 }
 
-if (!command) {
-  runHome();
-} else {
-  switch (command) {
+switch (command) {
   case "audit": {
     const targetPath = rest[1];
     if (!targetPath) {
@@ -129,55 +113,36 @@ if (!command) {
     const skillPaths = [
       path.join(resolvedTarget, ".agents", "skills"),
       path.join(resolvedTarget, ".claude", "skills"),
-      path.join(resolvedTarget, ".cursor", "skills")
+      path.join(resolvedTarget, ".cursor", "skills"),
     ];
-
     const hasSkills = skillPaths.some((p) => existsSync(p));
     if (!hasSkills) {
-      console.warn(" Nirapod Agent Skills missing in target repository (checked .agents, .claude, .cursor).");
-      console.warn("Auto-installing via bunx...\n");
-      
-      const result = spawnSync("bunx", ["skills", "nirapod-labs/nirapod-skills"], { 
-        stdio: "inherit" 
-      });
-
+      console.warn("⚠  Nirapod Agent Skills missing (checked .agents, .claude, .cursor).");
+      console.warn("   Auto-installing via bunx…\n");
+      const result = spawnSync("bunx", ["skills", "nirapod-labs/nirapod-skills"], { stdio: "inherit" });
       if (result.error || result.status !== 0) {
-        console.error("\nFailed to auto-install nirapod-skills. Please install them manually.");
+        console.error("\nFailed to auto-install nirapod-skills.");
         process.exit(1);
       }
-      console.log("\n✓ Skills successfully synced!\n");
+      console.log("\n✓ Skills synced!\n");
     }
 
     const { config, configPath } = loadConfig(resolvedTarget);
 
     switch (format) {
-      case "json":
-        runAgentMode(resolvedTarget, config);
-        break;
-      case "sarif":
-        runSarifMode(resolvedTarget, config);
-        break;
-      case "tui":
-        runAuditTui(resolvedTarget, config, configPath);
-        break;
-      case "markdown":
-        runMarkdownMode(resolvedTarget, config);
-        break;
-      default:
-        runReportMode(resolvedTarget, config);
-        break;
+      case "json":       runAgentMode(resolvedTarget, config);                          break;
+      case "sarif":      runSarifMode(resolvedTarget, config);                          break;
+      case "markdown":   runMarkdownMode(resolvedTarget, config);                       break;
+      case "report":     runReportMode(resolvedTarget, config);                         break;
+      default:           runAuditTui(resolvedTarget, config, configPath);               break;
     }
     break;
   }
 
-  case "rules": {
-    if (format === "json") {
-      runRulesJson();
-    } else {
-      runRulesHuman();
-    }
+  case "rules":
+    if (format === "json") runRulesJson();
+    else runRulesHuman();
     break;
-  }
 
   case "explain": {
     const ruleId = rest[1];
@@ -185,17 +150,12 @@ if (!command) {
       console.error("error: missing rule ID. Usage: nirapod-audit explain <rule-id>");
       process.exit(2);
     }
-    if (format === "json") {
-      runExplainJson(ruleId);
-    } else {
-      runExplainHuman(ruleId);
-    }
+    if (format === "json") runExplainJson(ruleId);
+    else runExplainHuman(ruleId);
     break;
   }
 
-  default: {
-    console.error(`error: unknown command "${command}". Run with --help for usage.`);
+  default:
+    console.error(`error: unknown command "${command}". Run nirapod-audit --help for usage.`);
     process.exit(2);
-  }
-}
 }

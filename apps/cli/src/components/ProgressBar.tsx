@@ -1,6 +1,6 @@
 /**
  * @file ProgressBar.tsx
- * @brief Animated progress indicator for file scanning.
+ * @brief Animated progress indicator with ETA and live findings count.
  *
  * @author Nirapod Team
  * @date 2026
@@ -9,7 +9,7 @@
  * SPDX-FileCopyrightText: 2026 Nirapod Contributors
  */
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Text, Box } from "ink";
 
 interface ProgressBarProps {
@@ -17,13 +17,14 @@ interface ProgressBarProps {
   total: number;
   currentFile: string;
   findings: number;
+  errors: number;
+  warnings: number;
   startedAt?: number;
 }
 
-const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-const BAR_WIDTH = 24;
+const SPINNER = ["⠋","⠙","⠹","⠸","⠼","⠴","⠦","⠧","⠇","⠏"];
+const BAR_WIDTH = 28;
 
-/** Formats elapsed milliseconds as a short human string: 1.2s or 420ms */
 function formatMs(ms: number): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
 }
@@ -33,44 +34,61 @@ export function ProgressBar({
   total,
   currentFile,
   findings,
+  errors,
+  warnings,
   startedAt,
 }: ProgressBarProps): React.ReactElement {
-  const pct = total > 0 ? Math.round((current / total) * 100) : 0;
-  const filled = Math.round((current / total) * BAR_WIDTH);
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    const t = setInterval(() => setFrame((f) => (f + 1) % SPINNER.length), 80);
+    return () => clearInterval(t);
+  }, []);
+
+  const pct    = total > 0 ? Math.round((current / total) * 100) : 0;
+  const filled = Math.round((current / Math.max(total, 1)) * BAR_WIDTH);
   const empty  = BAR_WIDTH - filled;
   const bar    = "█".repeat(filled) + "░".repeat(empty);
-  const frame  = SPINNER[current % SPINNER.length]!;
 
-  // ETA estimate
   let etaStr = "";
   if (startedAt && current > 0 && current < total) {
     const elapsed = Date.now() - startedAt;
     const eta = Math.round((elapsed / current) * (total - current));
-    etaStr = ` · ETA ${formatMs(eta)}`;
+    etaStr = `  eta ${formatMs(eta)}`;
   }
 
-  // Truncate long file paths from the left
-  const maxFile = 60;
-  const displayFile =
-    currentFile.length > maxFile
-      ? "…" + currentFile.slice(-(maxFile - 1))
-      : currentFile;
+  const maxFile = 55;
+  const displayFile = currentFile.length > maxFile
+    ? "…" + currentFile.slice(-(maxFile - 1))
+    : currentFile;
+
+  const barColor = errors > 0 ? "red" : warnings > 0 ? "yellow" : "magentaBright";
 
   return (
-    <Box marginTop={1} flexDirection="column">
+    <Box flexDirection="column" marginBottom={1} borderStyle="single" borderColor="dim" paddingX={1}>
+      {/* Progress bar row */}
       <Box>
-        <Text color="magentaBright" bold>{frame} </Text>
+        <Text color="magentaBright" bold>{SPINNER[frame]!} </Text>
         <Text dimColor>{"["}</Text>
-        <Text color="magentaBright">{bar}</Text>
-        <Text dimColor>{"] "}</Text>
-        <Text bold>{String(pct).padStart(3)}%</Text>
-        <Text dimColor>  {current}/{total}</Text>
+        <Text color={barColor}>{bar}</Text>
+        <Text dimColor>{"]"}</Text>
+        <Text bold>{" "}{String(pct).padStart(3)}%</Text>
+        <Text dimColor>{"  "}{current}/{total} files</Text>
         {findings > 0 && (
-          <Text color="yellow"> · {findings} finding{findings !== 1 ? "s" : ""}</Text>
+          <>
+            <Text dimColor>{"  ·  "}</Text>
+            {errors > 0 && <Text color="red" bold>{errors} err</Text>}
+            {errors > 0 && warnings > 0 && <Text dimColor>{" "}</Text>}
+            {warnings > 0 && <Text color="yellow">{warnings} warn</Text>}
+          </>
         )}
-        <Text dimColor>{etaStr}</Text>
+        {etaStr && <Text dimColor>{etaStr}</Text>}
       </Box>
-      <Text dimColor>  {"→ "}{displayFile}</Text>
+      {/* Current file row */}
+      <Box>
+        <Text dimColor>{"  → "}</Text>
+        <Text dimColor>{displayFile}</Text>
+      </Box>
     </Box>
   );
 }

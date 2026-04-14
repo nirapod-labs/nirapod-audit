@@ -75,7 +75,11 @@ function AuditApp({ targetPath, config, configPath }: AuditAppProps): React.Reac
             try {
               const { buildMarkdownReport } = await import("../output/markdown.js");
               const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-              const out = path.join(process.cwd(), `nirapod-report-${ts}.md`);
+              const reportDir = path.join(rootDir, ".nirapod", "audit");
+              if (!require("node:fs").existsSync(reportDir)) {
+                require("node:fs").mkdirSync(reportDir, { recursive: true });
+              }
+              const out = path.join(reportDir, `nirapod-report-${ts}.md`);
               const md = buildMarkdownReport(allDiagsRef.current, event.summary, rootDir, out);
               writeFileSync(out, md, "utf8");
               setReportPath(out);

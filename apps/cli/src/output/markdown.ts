@@ -506,7 +506,11 @@ export async function runMarkdownMode(
   if (!summary) throw new Error("audit did not complete");
 
   const ts = timestamp();
-  const outFile = path.join(process.cwd(), `nirapod-report-${ts}.md`);
+  const reportDir = path.join(rootDir, ".nirapod", "audit");
+  if (!require("node:fs").existsSync(reportDir)) {
+    require("node:fs").mkdirSync(reportDir, { recursive: true });
+  }
+  const outFile = path.join(reportDir, `nirapod-report-${ts}.md`);
   const md = buildMarkdownReport(allDiags, summary, rootDir, outFile);
   writeFileSync(outFile, md, "utf8");
 

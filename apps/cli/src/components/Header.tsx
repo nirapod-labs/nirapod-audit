@@ -1,11 +1,11 @@
 /**
  * @file Header.tsx
- * @brief Branded header banner with live audit statistics.
+ * @brief Branded TUI header with live audit counters and status indicator.
  *
  * @remarks
- * Shows the tool name, version, target path, and — once scanning starts —
- * a live running count of errors, warnings, and info findings. The counts
- * update in real time as the pipeline emits diagnostics.
+ * Two-row header: brand line with version + target, then a live stats row
+ * showing error/warning/info counts updating in real time as diagnostics stream.
+ * Shown above all streamed diagnostics. Styled to match claude-code quality.
  *
  * @author Nirapod Team
  * @date 2026
@@ -26,6 +26,26 @@ interface HeaderProps {
   done?: boolean;
 }
 
+/** Colored severity counter pill. */
+function StatPill({ count, label, color, dimColor }: {
+  count: number; label: string; color: string; dimColor?: boolean;
+}): React.ReactElement {
+  if (count === 0) {
+    return (
+      <Text dimColor>
+        <Text dimColor bold>{"0"}</Text>
+        <Text dimColor>{" " + label}</Text>
+      </Text>
+    );
+  }
+  return (
+    <Text>
+      <Text color={color} bold>{String(count)}</Text>
+      <Text dimColor>{" " + label + (count !== 1 && label !== "info" ? "s" : "")}</Text>
+    </Text>
+  );
+}
+
 export function Header({
   targetPath,
   configPath,
@@ -35,59 +55,46 @@ export function Header({
   done = false,
 }: HeaderProps): React.ReactElement {
   const hasStats = errors > 0 || warnings > 0 || infos > 0;
-  const statusColor = done
-    ? errors > 0 ? "red" : "green"
-    : "magentaBright";
+  const statusColor = done ? (errors > 0 ? "red" : "green") : "magentaBright";
+  const statusText = done ? (errors > 0 ? "FAIL" : "PASS") : "scanning…";
 
   return (
-    <Box flexDirection="column" marginBottom={1}>
-      {/* Brand + target */}
+    <Box
+      flexDirection="column"
+      borderStyle="round"
+      borderColor={done ? (errors > 0 ? "red" : "green") : "magentaBright"}
+      paddingX={1}
+      marginBottom={1}
+    >
+      {/* Brand row */}
       <Box>
-        <Text bold color="magentaBright">{"▓▓ "}</Text>
-        <Text bold color="magentaBright">nirapod-audit</Text>
-        <Text dimColor> v0.1.0</Text>
+        <Text bold color="magentaBright">{"⬡  nirapod-audit"}</Text>
+        <Text dimColor>{"  v0.1.0"}</Text>
         {targetPath && (
           <>
-            <Text dimColor>{" · "}</Text>
-            <Text color="blueBright">{targetPath}</Text>
+            <Text dimColor>{"  ·  "}</Text>
+            <Text color="blueBright" bold>{targetPath}</Text>
           </>
         )}
-        {done && (
-          <>
-            <Text dimColor>{" · "}</Text>
-            <Text bold color={statusColor}>
-              {errors > 0 ? "FAIL" : "PASS"}
-            </Text>
-          </>
-        )}
+        <Text dimColor>{"  ·  "}</Text>
+        <Text bold color={statusColor}>{statusText}</Text>
       </Box>
 
-      {/* Live stats row — only shown after first finding or when done */}
+      {/* Stats row */}
       {hasStats && (
-        <Box marginLeft={3}>
-          {errors > 0 ? (
-            <Text color="red" bold>{errors} error{errors !== 1 ? "s" : ""}</Text>
-          ) : (
-            <Text dimColor>0 errors</Text>
-          )}
-          <Text dimColor>{"  ·  "}</Text>
-          {warnings > 0 ? (
-            <Text color="yellow">{warnings} warning{warnings !== 1 ? "s" : ""}</Text>
-          ) : (
-            <Text dimColor>0 warnings</Text>
-          )}
-          {infos > 0 && (
+        <Box marginTop={0}>
+          <StatPill count={errors}   label="error"   color="red" />
+          <Text dimColor>{"   "}</Text>
+          <StatPill count={warnings} label="warning"  color="yellow" />
+          <Text dimColor>{"   "}</Text>
+          <StatPill count={infos}    label="info"     color="cyan" />
+          {configPath && (
             <>
-              <Text dimColor>{"  ·  "}</Text>
-              <Text color="cyan">{infos} info</Text>
+              <Text dimColor>{"   ·   config: "}</Text>
+              <Text dimColor>{configPath}</Text>
             </>
           )}
         </Box>
-      )}
-
-      {/* Config path */}
-      {configPath && (
-        <Text dimColor>   config: {configPath}</Text>
       )}
     </Box>
   );

@@ -2,11 +2,6 @@
  * @file Summary.tsx
  * @brief Final audit summary with per-category compliance matrix.
  *
- * @remarks
- * Renders after all files are processed. Shows a bordered table of
- * rule categories with error/warning counts, pass/fail/warn badges,
- * file counts, totals, duration, and exit code.
- *
  * @author Nirapod Team
  * @date 2026
  *
@@ -19,158 +14,121 @@ import { Text, Box } from "ink";
 import type { AuditSummary, RuleCategory } from "@nirapod-audit/protocol";
 import { ALL_RULES } from "@nirapod-audit/core";
 
-/**
- * Props for the {@link Summary} component.
- */
 interface SummaryProps {
-  /** Aggregated results from the completed audit run. */
   summary: AuditSummary;
-  /** Path of the auto-written markdown report (null if write failed). */
   reportPath?: string | null;
 }
 
-/**
- * All categories in display order.
- */
 const CATEGORIES: readonly RuleCategory[] = [
-  "LICENSE", "DOXYGEN", "TSDOC", "RUSTDOC", "NASA", "CRYPTO", "MEMORY", "STYLE",
+  "LICENSE","DOXYGEN","TSDOC","RUSTDOC","NASA","CRYPTO","MEMORY","STYLE",
 ];
 
-/**
- * Renders a status badge with icon and colour.
- */
 function StatusBadge({ status }: { status: string }): React.ReactElement {
-  switch (status) {
-    case "FAIL":
-      return <Text color="red" bold>✗ FAIL</Text>;
-    case "WARN":
-      return <Text color="yellow" bold>~ WARN</Text>;
-    default:
-      return <Text color="green" bold>✓ PASS</Text>;
-  }
+  if (status === "FAIL") return <Text color="red"  bold>✗ FAIL</Text>;
+  if (status === "WARN") return <Text color="yellow" bold>⚠ WARN</Text>;
+  return <Text color="green" bold>✓ PASS</Text>;
 }
 
-/**
- * Renders the final audit summary table.
- *
- * @param props - Component props with the audit summary.
- * @returns Ink elements showing per-category compliance and totals.
- */
 export function Summary({ summary, reportPath }: SummaryProps): React.ReactElement {
-  const categoryStats = CATEGORIES.map((cat) => {
-    const rulesInCat = ALL_RULES.filter((r) => r.category === cat);
-    let errors = 0;
-    let warnings = 0;
-    for (const rule of rulesInCat) {
+  const passed = summary.totalErrors === 0;
+
+  const catStats = CATEGORIES.map((cat) => {
+    const rules = ALL_RULES.filter((r) => r.category === cat);
+    let errors = 0, warnings = 0;
+    for (const rule of rules) {
       const hits = summary.ruleHits[rule.id] ?? 0;
-      if (rule.severity === "error") errors += hits;
-      else if (rule.severity === "warning") warnings += hits;
+      if (rule.severity === "error")   errors   += hits;
+      if (rule.severity === "warning") warnings += hits;
     }
-    const status =
-      errors > 0 ? "FAIL" : warnings > 0 ? "WARN" : "PASS";
-    return { cat, rules: rulesInCat.length, errors, warnings, status };
+    const status = errors > 0 ? "FAIL" : warnings > 0 ? "WARN" : "PASS";
+    return { cat, rules: rules.length, errors, warnings, status };
   });
 
-  const passed = summary.totalErrors === 0;
   const topRules = Object.entries(summary.ruleHits)
     .sort(([, a], [, b]) => b - a)
-    .slice(0, 3);
+    .slice(0, 5);
 
   return (
-    <Box flexDirection="column" marginTop={1} borderStyle="round" borderColor={passed ? "green" : "red"} paddingX={1}>
-      {/* Title bar */}
+    <Box
+      flexDirection="column"
+      borderStyle="round"
+      borderColor={passed ? "green" : "red"}
+      paddingX={1}
+      marginTop={1}
+    >
+      {/* Title */}
       <Box marginBottom={1}>
         <Text bold color={passed ? "green" : "red"}>
           {passed ? "✓ " : "✗ "}AUDIT {passed ? "PASSED" : "FAILED"}
         </Text>
+        <Text dimColor>{"  —  "}</Text>
+        <Text color="red" bold>{summary.totalErrors}</Text>
+        <Text dimColor>{" errors  "}</Text>
+        <Text color="yellow">{summary.totalWarnings}</Text>
+        <Text dimColor>{" warnings  "}</Text>
+        <Text color="cyan">{summary.totalInfos}</Text>
+        <Text dimColor>{" info"}</Text>
       </Box>
 
-      {/* Category table header */}
+      {/* Category table */}
+      <Text dimColor>{"  ─".repeat(24)}</Text>
       <Text>
-        <Text bold dimColor>{"  Category".padEnd(14)}</Text>
-        <Text bold dimColor>{"Rules".padStart(7)}</Text>
-        <Text bold dimColor>{"Errors".padStart(9)}</Text>
-        <Text bold dimColor>{"Warn".padStart(7)}</Text>
+        <Text bold dimColor>{"  Category     "}</Text>
+        <Text bold dimColor>{"Rules "}</Text>
+        <Text bold dimColor>{"  Errors "}</Text>
+        <Text bold dimColor>{"  Warn "}</Text>
         <Text bold dimColor>{"  Status"}</Text>
       </Text>
-      <Text dimColor>  {"─".repeat(48)}</Text>
+      <Text dimColor>{"  ─".repeat(24)}</Text>
 
-      {/* Category rows */}
-      {categoryStats.map(({ cat, rules, errors, warnings, status }) => (
+      {catStats.map(({ cat, rules, errors, warnings, status }) => (
         <Text key={cat}>
-          <Text>{"  "}{cat.padEnd(12)}</Text>
-          <Text dimColor>{String(rules).padStart(7)}</Text>
-          {errors > 0 ? (
-            <Text color="red" bold>{String(errors).padStart(9)}</Text>
-          ) : (
-            <Text dimColor>{String(errors).padStart(9)}</Text>
-          )}
-          {warnings > 0 ? (
-            <Text color="yellow">{String(warnings).padStart(7)}</Text>
-          ) : (
-            <Text dimColor>{String(warnings).padStart(7)}</Text>
-          )}
-          <Text>{"  "}</Text>
-          <StatusBadge status={status} />
+          {"  "}{cat.padEnd(13)}
+          <Text dimColor>{String(rules).padStart(5)}</Text>
+          {errors > 0
+            ? <Text color="red" bold>{String(errors).padStart(9)}</Text>
+            : <Text dimColor>{String(errors).padStart(9)}</Text>}
+          {warnings > 0
+            ? <Text color="yellow">{String(warnings).padStart(7)}</Text>
+            : <Text dimColor>{String(warnings).padStart(7)}</Text>}
+          {"  "}<StatusBadge status={status} />
         </Text>
       ))}
 
-      {/* Separator */}
-      <Text dimColor>  {"─".repeat(48)}</Text>
+      <Text dimColor>{"  ─".repeat(24)}</Text>
 
-      {/* Stats row */}
-      <Box marginTop={1} flexDirection="column">
+      {/* Stats */}
+      <Box flexDirection="column" marginTop={1}>
         <Text>
-          <Text dimColor>  Files: </Text>
+          <Text dimColor>{"  Files:  "}</Text>
           <Text>{summary.scannedFiles} scanned</Text>
-          {summary.skippedFiles > 0 && (
-            <Text dimColor> · {summary.skippedFiles} cached</Text>
-          )}
+          {summary.skippedFiles > 0 && <Text dimColor>{" · "}{summary.skippedFiles} cached</Text>}
         </Text>
-        <Text>
-          <Text dimColor>  Total: </Text>
-          <Text color="red" bold>{summary.totalErrors} errors</Text>
-          <Text dimColor> · </Text>
-          <Text color="yellow">{summary.totalWarnings} warnings</Text>
-          <Text dimColor> · </Text>
-          <Text color="cyan">{summary.totalInfos} info</Text>
-        </Text>
-
-        {/* Top violated rules (if any) */}
         {topRules.length > 0 && (
           <Text>
-            <Text dimColor>  Top:   </Text>
+            <Text dimColor>{"  Top:    "}</Text>
             {topRules.map(([id, count], i) => (
               <React.Fragment key={id}>
-                {i > 0 && <Text dimColor>, </Text>}
-                <Text>{id}</Text>
-                <Text dimColor>×{count}</Text>
+                {i > 0 && <Text dimColor>{", "}</Text>}
+                <Text dimColor>{id}</Text>
+                <Text color="yellow">{"×"}{count}</Text>
               </React.Fragment>
             ))}
           </Text>
         )}
-
         <Text>
-          <Text dimColor>  Time:  </Text>
+          <Text dimColor>{"  Time:   "}</Text>
           <Text>{summary.durationMs} ms</Text>
         </Text>
-      </Box>
-
-      {/* Auto-generated Markdown Report */}
-      {reportPath && (
-        <Box marginTop={1}>
+        {reportPath && (
           <Text>
-            <Text dimColor>  Report: </Text>
+            <Text dimColor>{"  Report: "}</Text>
             <Text color="cyan">{reportPath}</Text>
           </Text>
-        </Box>
-      )}
-
-      {/* Exit code */}
-      <Box marginTop={1}>
+        )}
         <Text>
-          <Text dimColor>  Exit:   </Text>
-          <Text color={passed ? "green" : "red"} bold>
+          <Text dimColor>{"  Exit:   "}</Text>
+          <Text bold color={passed ? "green" : "red"}>
             {passed ? "0 (PASS)" : "1 (FAIL)"}
           </Text>
         </Text>
