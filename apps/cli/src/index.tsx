@@ -120,9 +120,15 @@ switch (command) {
     const resolvedTarget = path.resolve(targetPath);
 
     // Enforce nirapod-skills existence
-    const skillsPath = path.join(resolvedTarget, ".agents", "skills");
-    if (!existsSync(skillsPath)) {
-      console.warn("⚠️  Nirapod Agent Skills missing in target repository (.agents/skills/).");
+    const skillPaths = [
+      path.join(resolvedTarget, ".agents", "skills"),
+      path.join(resolvedTarget, ".claude", "skills"),
+      path.join(resolvedTarget, ".cursor", "skills")
+    ];
+
+    const hasSkills = skillPaths.some((p) => existsSync(p));
+    if (!hasSkills) {
+      console.warn(" Nirapod Agent Skills missing in target repository (checked .agents, .claude, .cursor).");
       console.warn("Auto-installing via bunx...\n");
       
       const result = spawnSync("bunx", ["skills", "nirapod-labs/nirapod-skills"], { 
@@ -130,7 +136,7 @@ switch (command) {
       });
 
       if (result.error || result.status !== 0) {
-        console.error("\n❌ Failed to auto-install nirapod-skills. Please install them manually.");
+        console.error("\nFailed to auto-install nirapod-skills. Please install them manually.");
         process.exit(1);
       }
       console.log("\n✓ Skills successfully synced!\n");
