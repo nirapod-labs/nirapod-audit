@@ -22,6 +22,7 @@ import { loadConfig } from "@nirapod-audit/core";
 import { runAuditTui } from "./commands/audit.js";
 import { runRulesHuman, runRulesJson } from "./commands/rules.js";
 import { runExplainHuman, runExplainJson } from "./commands/explain.js";
+import { runHome } from "./commands/home.js";
 import { runAgentMode } from "./output/agent.js";
 import { runSarifMode } from "./output/sarif.js";
 import { runReportMode } from "./output/report.js";
@@ -105,11 +106,14 @@ const args = process.argv.slice(2);
 const { format, rest } = parseOutputFormat(args);
 const command = rest[0];
 
-if (!command || command === "--help" || command === "-h") {
+if (command === "--help" || command === "-h") {
   showHelp();
 }
 
-switch (command) {
+if (!command) {
+  runHome();
+} else {
+  switch (command) {
   case "audit": {
     const targetPath = rest[1];
     if (!targetPath) {
@@ -188,4 +192,5 @@ switch (command) {
     console.error(`error: unknown command "${command}". Run with --help for usage.`);
     process.exit(2);
   }
+}
 }

@@ -25,6 +25,8 @@ import { ALL_RULES } from "@nirapod-audit/core";
 interface SummaryProps {
   /** Aggregated results from the completed audit run. */
   summary: AuditSummary;
+  /** Path of the auto-written markdown report (null if write failed). */
+  reportPath?: string | null;
 }
 
 /**
@@ -54,7 +56,7 @@ function StatusBadge({ status }: { status: string }): React.ReactElement {
  * @param props - Component props with the audit summary.
  * @returns Ink elements showing per-category compliance and totals.
  */
-export function Summary({ summary }: SummaryProps): React.ReactElement {
+export function Summary({ summary, reportPath }: SummaryProps): React.ReactElement {
   const categoryStats = CATEGORIES.map((cat) => {
     const rulesInCat = ALL_RULES.filter((r) => r.category === cat);
     let errors = 0;
@@ -154,10 +156,20 @@ export function Summary({ summary }: SummaryProps): React.ReactElement {
         </Text>
       </Box>
 
+      {/* Auto-generated Markdown Report */}
+      {reportPath && (
+        <Box marginTop={1}>
+          <Text>
+            <Text dimColor>  Report: </Text>
+            <Text color="cyan">{reportPath}</Text>
+          </Text>
+        </Box>
+      )}
+
       {/* Exit code */}
       <Box marginTop={1}>
         <Text>
-          <Text dimColor>  Exit: </Text>
+          <Text dimColor>  Exit:   </Text>
           <Text color={passed ? "green" : "red"} bold>
             {passed ? "0 (PASS)" : "1 (FAIL)"}
           </Text>
