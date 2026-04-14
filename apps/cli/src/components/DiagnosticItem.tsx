@@ -3,9 +3,10 @@
  * @brief Ink component that renders a single diagnostic in rustc format.
  *
  * @remarks
- * Mirrors the rustc diagnostic output format: severity badge, rule ID,
- * message, file location with source snippet, note lines, and help
- * suggestion. Uses chalk colors for severity-based highlighting.
+ * Mirrors the rustc diagnostic output format exactly: severity badge,
+ * rule ID, message, file location arrow, source snippet with line
+ * numbers, caret highlighting under the offending span, note lines,
+ * and help suggestion. Caret width matches the span column range.
  *
  * @author Nirapod Team
  * @date 2026
@@ -19,50 +20,60 @@ import { Text, Box } from "ink";
 import type { Diagnostic } from "@nirapod-audit/protocol";
 import path from "node:path";
 
-/**
- * Props for the {@link DiagnosticItem} component.
- */
 interface DiagnosticItemProps {
-  /** The diagnostic to render. */
   diagnostic: Diagnostic;
-  /** Project root for computing relative paths. */
   rootDir: string;
-  /** Whether to show help suggestions. */
   showHelp: boolean;
-  /** Whether to show note lines. */
   showNotes: boolean;
 }
 
-/**
- * Maps severity to a chalk color name.
- *
- * @param severity - The severity level.
- * @returns Ink color string for the severity badge.
- */
+/** Maps severity to an Ink color name. */
 function severityColor(severity: string): string {
   switch (severity) {
-    case "error": return "red";
+    case "error":   return "red";
     case "warning": return "yellow";
-    case "info": return "cyan";
-    default: return "white";
+    case "info":    return "cyan";
+    default:        return "white";
   }
 }
 
 /**
- * Renders a single diagnostic in rustc-style format.
+ * Builds the caret string (^^^) aligned to the span column range.
  *
- * @param props - Component props with the diagnostic data.
- * @returns Ink elements mimicking rustc's error output format.
+ * @param snippet - First source line of the span.
+ * @param startCol - 1-based start column.
+ * @param endCol - 1-based end column (may equal startCol for zero-width).
+ * @param singleLine - True when span covers only one source line.
+ * @returns A string of spaces and carets ready to render under the snippet.
+ */
+function buildCaretLine(
+  snippet: string,
+  startCol: number,
+  endCol: number,
+  singleLine: boolean,
+): string {
+  const firstLine = snippet.split("\n")[0] ?? "";
+  const indent = " ".repeat(Math.max(0, startCol - 1));
+  const width = singleLine && endCol > startCol
+    ? endCol - startCol
+    : Math.max(1, firstLine.trimEnd().length - startCol + 1);
+  const carets = "^".repeat(Math.max(1, width));
+  return indent + carets;
+}
+
+/**
+ * Renders a single diagnostic in rustc-style format with caret highlighting.
  *
  * @example
  * ```
- * error[NRP-LIC-001]: Missing SPDX-License-Identifier line.
- *   --> src/crypto/aes_driver.h:1:1
+ * error[NRP-NASA-006]: function 'encryptGcm' is 87 lines; limit is 60
+ *   --> src/crypto/aes_driver.cpp:142:1
  *    |
- *  1 | #pragma once
+ * 142| NirapodError AesDriver::encryptGcm(AesContext* ctx, ...) {
+ *    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
  *    |
- *    = note: Every Nirapod source file must declare its license via SPDX.
- *    = help: Add "SPDX-License-Identifier: APACHE-2.0" inside the file-level Doxygen block.
+ *    = note: NASA JPL Rule 4: counted 87 non-blank lines
+ *    = help: split at the backend-dispatch boundary around line 191
  * ```
  */
 export function DiagnosticItem({
@@ -74,57 +85,70 @@ export function DiagnosticItem({
   const { rule, span, message, notes, help } = diagnostic;
   const relPath = path.relative(rootDir, span.file);
   const color = severityColor(rule.severity);
+  const lineNumWidth = Math.max(3, String(span.startLine).length);
+  const gutter = " ".repeat(lineNumWidth) + " | ";
+  const singleLine = span.startLine === span.endLine;
+
+  const snippetLines = span.snippet ? span.snippet.split("\n") : [];
 
   return (
     <Box flexDirection="column" marginBottom={1}>
       {/* Header: severity[RULE-ID]: message */}
       <Text>
-        <Text color={color} bold>
-          {rule.severity}[{rule.id}]
-        </Text>
+        <Text color={color} bold>{rule.severity}[{rule.id}]</Text>
         <Text>: {message}</Text>
       </Text>
 
-      {/* Location: --> file:line:col */}
-      <Text color="blue">
-        {"  --> "}
-        {relPath}:{span.startLine}:{span.startCol}
+      {/* Location arrow */}
+      <Text>
+        <Text color="blueBright">{"  --> "}</Text>
+        <Text color="blueBright">{relPath}:{span.startLine}:{span.startCol}</Text>
       </Text>
 
-      {/* Source snippet */}
-      {span.snippet ? (
-        <Box flexDirection="column">
-          <Text dimColor>{"   |"}</Text>
-          {span.snippet.split("\n").map((line, i) => (
-            <Text key={i}>
-              <Text dimColor>
-                {String(span.startLine + i).padStart(3)} {"| "}
-              </Text>
-              <Text>{line}</Text>
+      {/* Gutter divider */}
+      <Text dimColor>{gutter}</Text>
+
+      {/* Source snippet with line numbers */}
+      {snippetLines.map((line, i) => (
+        <React.Fragment key={i}>
+          <Text>
+            <Text dimColor>
+              {String(span.startLine + i).padStart(lineNumWidth)} {"| "}
             </Text>
-          ))}
-          <Text dimColor>{"   |"}</Text>
-        </Box>
-      ) : null}
+            <Text>{line}</Text>
+          </Text>
+          {/* Caret line — only on the first line of the span */}
+          {i === 0 && (
+            <Text>
+              <Text dimColor>{gutter}</Text>
+              <Text color={color} bold>
+                {buildCaretLine(line, span.startCol, span.endCol, singleLine)}
+              </Text>
+            </Text>
+          )}
+        </React.Fragment>
+      ))}
+
+      {/* Closing gutter */}
+      <Text dimColor>{gutter}</Text>
 
       {/* Notes */}
-      {showNotes &&
-        notes.map((note, i) => (
-          <Text key={`note-${i}`}>
-            <Text dimColor>{"   = "}</Text>
-            <Text color="cyan">note: </Text>
-            <Text>{note}</Text>
-          </Text>
-        ))}
+      {showNotes && notes.map((note, i) => (
+        <Text key={`note-${i}`}>
+          <Text dimColor>{"   = "}</Text>
+          <Text color="cyan">{"note: "}</Text>
+          <Text dimColor>{note}</Text>
+        </Text>
+      ))}
 
       {/* Help */}
-      {showHelp && help ? (
+      {showHelp && help && (
         <Text>
           <Text dimColor>{"   = "}</Text>
-          <Text color="green">help: </Text>
+          <Text color="green">{"help: "}</Text>
           <Text>{help}</Text>
         </Text>
-      ) : null}
+      )}
     </Box>
   );
 }

@@ -3,8 +3,9 @@
  * @brief Ink TUI for the `audit` command.
  *
  * @remarks
- * Renders the interactive audit experience: branded header, live progress
- * bar with spinner, streaming diagnostics, and a final compliance matrix.
+ * Renders the full interactive audit experience: branded header with live
+ * counters, animated progress bar, streaming rustc-style diagnostics with
+ * caret highlighting, and a final compliance matrix summary.
  *
  * @author Nirapod Team
  * @date 2026
@@ -13,7 +14,7 @@
  * SPDX-FileCopyrightText: 2026 Nirapod Contributors
  */
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { render, Box, Text, Static } from "ink";
 import { runPipeline } from "@nirapod-audit/core";
 import type { AuditConfig, AuditSummary, Diagnostic } from "@nirapod-audit/protocol";
@@ -21,32 +22,27 @@ import { Header } from "../components/Header.js";
 import { ProgressBar } from "../components/ProgressBar.js";
 import { DiagnosticItem } from "../components/DiagnosticItem.js";
 import { Summary } from "../components/Summary.js";
+import { writeFileSync } from "node:fs";
 import path from "node:path";
 
-/**
- * Props for the {@link AuditApp} component.
- */
 interface AuditAppProps {
-  /** Absolute path to the audit target (file or directory). */
   targetPath: string;
-  /** Merged audit configuration. */
   config: AuditConfig;
-  /** Path to the loaded config file, if found. */
   configPath: string | null;
 }
 
-/**
- * Top-level Ink component for the audit TUI.
- *
- * @param props - Contains the target path, config, and config path.
- * @returns Ink elements showing header, progress, diagnostics, and summary.
- */
 function AuditApp({ targetPath, config, configPath }: AuditAppProps): React.ReactElement {
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
-  const [currentFile, setCurrentFile] = useState<string>("");
-  const [progress, setProgress] = useState({ current: 0, total: 0 });
-  const [summary, setSummary] = useState<AuditSummary | null>(null);
-  const [errors, setErrors] = useState<string[]>([]);
+  const [currentFile, setCurrentFile]  = useState<string>("");
+  const [progress, setProgress]        = useState({ current: 0, total: 0 });
+  const [summary, setSummary]          = useState<AuditSummary | null>(null);
+  const [errors, setErrors]            = useState<string[]>([]);
+  const [errCount, setErrCount]        = useState(0);
+  const [warnCount, setWarnCount]      = useState(0);
+  const [infoCount, setInfoCount]      = useState(0);
+  const [reportPath, setReportPath]    = useState<string | null>(null);
+  const [startedAt]                    = useState(() => Date.now());
+  const allDiagsRef                    = useRef<Diagnostic[]>([]);
   const rootDir = path.resolve(targetPath);
 
   useEffect(() => {
@@ -60,13 +56,25 @@ function AuditApp({ targetPath, config, configPath }: AuditAppProps): React.Reac
             setCurrentFile(event.file);
             setProgress((p) => ({ ...p, current: event.index }));
             break;
-          case "diagnostic":
+          case "diagnostic": {
+            allDiagsRef.current.push(event.data);
             setDiagnostics((prev) => [...prev, event.data]);
+            const sev = event.data.rule.severity;
+            if (sev === "error")   setErrCount((n) => n + 1);
+            if (sev === "warning") setWarnCount((n) => n + 1);
+            if (sev === "info")    setInfoCount((n) => n + 1);
             break;
-          case "file_done":
-            break;
+          }
           case "audit_done":
             setSummary(event.summary);
+            // Auto-write markdown report so the full detail is always saved
+            try {
+              const { buildMarkdownReport } = await import("../output/markdown.js");
+              const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+              const out = path.join(process.cwd(), `nirapod-report-${ts}.md`);
+              writeFileSync(out, buildMarkdownReport(allDiagsRef.current, event.summary, rootDir, out), "utf8");
+              setReportPath(out);
+            } catch { /* non-fatal */ }
             break;
           case "error":
             setErrors((prev) => [...prev, event.message]);
@@ -74,17 +82,21 @@ function AuditApp({ targetPath, config, configPath }: AuditAppProps): React.Reac
         }
       }
     };
-    run().catch((err) =>
-      setErrors((prev) => [...prev, String(err)]),
-    );
+    run().catch((err) => setErrors((prev) => [...prev, String(err)]));
   }, [targetPath]);
 
   const relTarget = path.basename(targetPath);
 
   return (
     <Box flexDirection="column">
-      {/* Header banner */}
-      <Header targetPath={relTarget} configPath={configPath} />
+      <Header
+        targetPath={relTarget}
+        configPath={configPath}
+        errors={errCount}
+        warnings={warnCount}
+        infos={infoCount}
+        done={!!summary}
+      />
 
       {/* Completed diagnostics (static — Ink won't re-render them) */}
       <Static items={diagnostics}>
@@ -106,10 +118,11 @@ function AuditApp({ targetPath, config, configPath }: AuditAppProps): React.Reac
           total={progress.total}
           currentFile={path.relative(rootDir, currentFile) || currentFile}
           findings={diagnostics.length}
+          startedAt={startedAt}
         />
       )}
 
-      {/* Runtime errors */}
+      {/* Internal errors */}
       {errors.map((err, i) => (
         <Box key={`err-${i}`} marginLeft={2}>
           <Text color="red" bold>internal error: </Text>
@@ -117,19 +130,11 @@ function AuditApp({ targetPath, config, configPath }: AuditAppProps): React.Reac
         </Box>
       ))}
 
-      {/* Summary compliance matrix */}
-      {summary && <Summary summary={summary} />}
+      {summary && <Summary summary={summary} reportPath={reportPath} />}
     </Box>
   );
 }
 
-/**
- * Launches the audit TUI.
- *
- * @param targetPath - Absolute path to audit target.
- * @param config - Active audit configuration.
- * @param configPath - Path to the loaded config file, or null.
- */
 export function runAuditTui(
   targetPath: string,
   config: AuditConfig,
@@ -138,8 +143,5 @@ export function runAuditTui(
   const { waitUntilExit } = render(
     <AuditApp targetPath={targetPath} config={config} configPath={configPath} />
   );
-
-  waitUntilExit().then(() => {
-    // Exit code is handled by the pipeline summary
-  });
+  waitUntilExit().catch(() => {});
 }

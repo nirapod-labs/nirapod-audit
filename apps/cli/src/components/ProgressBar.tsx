@@ -12,58 +12,65 @@
 import React from "react";
 import { Text, Box } from "ink";
 
-/**
- * Props for the {@link ProgressBar} component.
- */
 interface ProgressBarProps {
-  /** Current file index (1-based). */
   current: number;
-  /** Total file count. */
   total: number;
-  /** Relative path of the file currently being analysed. */
   currentFile: string;
-  /** Number of findings so far. */
   findings: number;
+  startedAt?: number;
 }
 
-/** Spinner frames for the animation. */
 const SPINNER = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const BAR_WIDTH = 24;
 
-/**
- * Renders a live progress bar with spinner, percentage, and file name.
- *
- * @param props - Component props.
- * @returns Ink elements for the progress indicator.
- */
+/** Formats elapsed milliseconds as a short human string: 1.2s or 420ms */
+function formatMs(ms: number): string {
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${ms}ms`;
+}
+
 export function ProgressBar({
   current,
   total,
   currentFile,
   findings,
+  startedAt,
 }: ProgressBarProps): React.ReactElement {
   const pct = total > 0 ? Math.round((current / total) * 100) : 0;
-  const barWidth = 20;
-  const filled = Math.round((current / total) * barWidth);
-  const empty = barWidth - filled;
-  const bar = "█".repeat(filled) + "░".repeat(empty);
+  const filled = Math.round((current / total) * BAR_WIDTH);
+  const empty  = BAR_WIDTH - filled;
+  const bar    = "█".repeat(filled) + "░".repeat(empty);
+  const frame  = SPINNER[current % SPINNER.length]!;
 
-  // Animate spinner based on current file index
-  const frame = SPINNER[current % SPINNER.length]!;
+  // ETA estimate
+  let etaStr = "";
+  if (startedAt && current > 0 && current < total) {
+    const elapsed = Date.now() - startedAt;
+    const eta = Math.round((elapsed / current) * (total - current));
+    etaStr = ` · ETA ${formatMs(eta)}`;
+  }
+
+  // Truncate long file paths from the left
+  const maxFile = 60;
+  const displayFile =
+    currentFile.length > maxFile
+      ? "…" + currentFile.slice(-(maxFile - 1))
+      : currentFile;
 
   return (
     <Box marginTop={1} flexDirection="column">
       <Box>
-        <Text color="magentaBright">{frame} </Text>
-        <Text dimColor>[</Text>
+        <Text color="magentaBright" bold>{frame} </Text>
+        <Text dimColor>{"["}</Text>
         <Text color="magentaBright">{bar}</Text>
-        <Text dimColor>]</Text>
-        <Text bold> {pct}%</Text>
-        <Text dimColor> ({current}/{total})</Text>
+        <Text dimColor>{"] "}</Text>
+        <Text bold>{String(pct).padStart(3)}%</Text>
+        <Text dimColor>  {current}/{total}</Text>
         {findings > 0 && (
-          <Text color="yellow"> · {findings} findings</Text>
+          <Text color="yellow"> · {findings} finding{findings !== 1 ? "s" : ""}</Text>
         )}
+        <Text dimColor>{etaStr}</Text>
       </Box>
-      <Text dimColor>  → {currentFile}</Text>
+      <Text dimColor>  {"→ "}{displayFile}</Text>
     </Box>
   );
 }
