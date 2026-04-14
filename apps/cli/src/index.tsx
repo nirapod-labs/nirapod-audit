@@ -16,6 +16,8 @@
  */
 
 import path from "node:path";
+import { existsSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { loadConfig } from "@nirapod-audit/core";
 import { runAuditTui } from "./commands/audit.js";
 import { runRulesHuman, runRulesJson } from "./commands/rules.js";
@@ -116,6 +118,24 @@ switch (command) {
     }
 
     const resolvedTarget = path.resolve(targetPath);
+
+    // Enforce nirapod-skills existence
+    const skillsPath = path.join(resolvedTarget, ".agents", "skills");
+    if (!existsSync(skillsPath)) {
+      console.warn("⚠️  Nirapod Agent Skills missing in target repository (.agents/skills/).");
+      console.warn("Auto-installing via bunx...\n");
+      
+      const result = spawnSync("bunx", ["skills", "nirapod-labs/nirapod-skills"], { 
+        stdio: "inherit" 
+      });
+
+      if (result.error || result.status !== 0) {
+        console.error("\n❌ Failed to auto-install nirapod-skills. Please install them manually.");
+        process.exit(1);
+      }
+      console.log("\n✓ Skills successfully synced!\n");
+    }
+
     const { config, configPath } = loadConfig(resolvedTarget);
 
     switch (format) {
