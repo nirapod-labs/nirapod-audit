@@ -34,7 +34,8 @@ import { AstPass } from "../passes/ast-pass.js";
 import { NasaPass } from "../passes/nasa-pass.js";
 import { CryptoPass } from "../passes/crypto-pass.js";
 import { MemoryPass } from "../passes/memory-pass.js";
-import { loadCache, saveCache, getCachedResult, updateCacheEntry, hashContent } from "../cache.js";
+import { loadCache, saveCache, getCachedResultByMtime, getCachedResultByHash, updateCacheEntry, hashContent, getFileMtimeMs, getCachedResult } from "../cache.js";
+import { ALL_RULES } from "../rules/index.js";
 
 /**
  * Source file extension patterns accepted by the pipeline.
@@ -167,8 +168,8 @@ export async function* runPipeline(
   const ruleHits: Record<string, number> = {};
   const startTime = performance.now();
 
-  // Incremental mode: load file hash cache
-  const cache = loadCache(rootDir);
+  // Incremental mode: load file hash cache (with config hash + rule count invalidation)
+  const cache = loadCache(rootDir, config, ALL_RULES.length);
   let cachedSkipCount = 0;
 
   for (let i = 0; i < allFiles.length; i++) {
@@ -187,8 +188,14 @@ export async function* runPipeline(
 
     // Incremental: skip unchanged files
     const relPath = path.relative(rootDir, filePath);
-    const fileHash = await hashContent(raw);
-    const cached = getCachedResult(cache, relPath, fileHash);
+    const mtimeMs = getFileMtimeMs(filePath);
+    let cached = getCachedResultByMtime(cache, relPath, mtimeMs);
+    let fileHash = "";
+
+    if (!cached) {
+      fileHash = await hashContent(raw);
+      cached = getCachedResultByHash(cache, relPath, fileHash);
+    }
 
     if (cached) {
       cachedSkipCount++;
@@ -258,7 +265,7 @@ export async function* runPipeline(
     }
 
     // Update cache with fresh results including ruleHits
-    updateCacheEntry(cache, relPath, fileHash, errors, warnings, infos, fileRuleHits);
+    updateCacheEntry(cache, relPath, fileHash, errors, warnings, infos, fileRuleHits, mtimeMs);
 
     fileResults.push({
       path: filePath,

@@ -3,9 +3,10 @@
  * @brief Ink TUI for the `audit` command.
  *
  * @remarks
- * Renders the full interactive audit experience: branded header with live
- * counters, animated progress bar, streaming rustc-style diagnostics with
- * caret highlighting, and a final compliance matrix summary.
+ * Renders the full interactive audit experience with live streaming diagnostics.
+ * After completion, auto-writes a markdown report and shows its path in the
+ * summary. The TUI uses <Static> for completed diagnostics (no scroll needed)
+ * and a live progress bar pinned below.
  *
  * @author Nirapod Team
  * @date 2026
@@ -16,13 +17,13 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { render, Box, Text, Static } from "ink";
+import { writeFileSync } from "node:fs";
 import { runPipeline } from "@nirapod-audit/core";
 import type { AuditConfig, AuditSummary, Diagnostic } from "@nirapod-audit/protocol";
 import { Header } from "../components/Header.js";
 import { ProgressBar } from "../components/ProgressBar.js";
 import { DiagnosticItem } from "../components/DiagnosticItem.js";
 import { Summary } from "../components/Summary.js";
-import { writeFileSync } from "node:fs";
 import path from "node:path";
 
 interface AuditAppProps {
@@ -52,10 +53,12 @@ function AuditApp({ targetPath, config, configPath }: AuditAppProps): React.Reac
           case "audit_start":
             setProgress((p) => ({ ...p, total: event.totalFiles }));
             break;
+
           case "file_start":
             setCurrentFile(event.file);
             setProgress((p) => ({ ...p, current: event.index }));
             break;
+
           case "diagnostic": {
             allDiagsRef.current.push(event.data);
             setDiagnostics((prev) => [...prev, event.data]);
@@ -65,17 +68,23 @@ function AuditApp({ targetPath, config, configPath }: AuditAppProps): React.Reac
             if (sev === "info")    setInfoCount((n) => n + 1);
             break;
           }
-          case "audit_done":
+
+          case "audit_done": {
             setSummary(event.summary);
-            // Auto-write markdown report so the full detail is always saved
+            // Auto-write markdown report after completion
             try {
               const { buildMarkdownReport } = await import("../output/markdown.js");
               const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
               const out = path.join(process.cwd(), `nirapod-report-${ts}.md`);
-              writeFileSync(out, buildMarkdownReport(allDiagsRef.current, event.summary, rootDir, out), "utf8");
+              const md = buildMarkdownReport(allDiagsRef.current, event.summary, rootDir, out);
+              writeFileSync(out, md, "utf8");
               setReportPath(out);
-            } catch { /* non-fatal */ }
+            } catch {
+              /* non-fatal — TUI still shows summary */
+            }
             break;
+          }
+
           case "error":
             setErrors((prev) => [...prev, event.message]);
             break;
@@ -98,7 +107,7 @@ function AuditApp({ targetPath, config, configPath }: AuditAppProps): React.Reac
         done={!!summary}
       />
 
-      {/* Completed diagnostics (static — Ink won't re-render them) */}
+      {/* Completed diagnostics — Static means Ink never re-renders them */}
       <Static items={diagnostics}>
         {(diag, i) => (
           <DiagnosticItem
@@ -111,13 +120,15 @@ function AuditApp({ targetPath, config, configPath }: AuditAppProps): React.Reac
         )}
       </Static>
 
-      {/* Live progress bar */}
+      {/* Live progress bar (disappears when done) */}
       {!summary && progress.total > 0 && (
         <ProgressBar
           current={progress.current}
           total={progress.total}
           currentFile={path.relative(rootDir, currentFile) || currentFile}
           findings={diagnostics.length}
+          errors={errCount}
+          warnings={warnCount}
           startedAt={startedAt}
         />
       )}
@@ -143,5 +154,7 @@ export function runAuditTui(
   const { waitUntilExit } = render(
     <AuditApp targetPath={targetPath} config={config} configPath={configPath} />
   );
-  waitUntilExit().catch(() => {});
+  waitUntilExit().then(() => {
+    // Exit code based on summary is handled by the app itself via process.exitCode
+  }).catch(() => {});
 }
