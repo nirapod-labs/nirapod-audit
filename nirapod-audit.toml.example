@@ -1,0 +1,40 @@
+# nirapod-audit configuration
+# Place this file in your project root.
+
+[audit]
+# Platform context hint — affects which crypto rules are active
+# Options: nrf52840 | nrf5340 | esp32 | multi | auto
+platform = "auto"
+
+# Max function length (NASA Rule 4), default: 60
+max_function_lines = 60
+
+# Minimum assertions per function (NASA Rule 5), default: 2
+min_assertions = 2
+
+[rules.overrides]
+# Downgrade specific rules by ID
+# "NRP-STYLE-001" = "info"
+# "NRP-DOX-018" = "ignore"
+
+[ignore]
+# Files/patterns to exclude from audit
+paths = [
+  "third_party/**",
+  "nordic_sdk/**",
+  "build/**",
+  "node_modules/**",
+]
+
+# Rule IDs to suppress entirely
+# rules = ["NRP-STYLE-001"]
+
+[only]
+# If set, only run rules from these categories
+# categories = ["NASA", "CRYPTO"]
+
+[output]
+# Whether to show =help suggestions in diagnostics
+show_help = true
+# Whether to show =note rationale lines in diagnostics
+show_notes = true
