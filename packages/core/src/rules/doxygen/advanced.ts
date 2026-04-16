@@ -21,7 +21,7 @@ const LANG_C_CPP = ["c", "cpp"] as const;
 
 export const NRP_DOX_ADV_001: Rule = {
   id: "NRP-DOX-ADV-001",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "error",
   title: "dangling-copydoc-reference",
   description: "@copydoc references a symbol not found in codebase.",
@@ -32,7 +32,7 @@ export const NRP_DOX_ADV_001: Rule = {
 
 export const NRP_DOX_ADV_002: Rule = {
   id: "NRP-DOX-ADV-002",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "error",
   title: "copydoc-chain-depth-exceeded",
   description: "@copydoc chain exceeds 3 hops (maximum resolution depth).",
@@ -43,7 +43,7 @@ export const NRP_DOX_ADV_002: Rule = {
 
 export const NRP_DOX_ADV_003: Rule = {
   id: "NRP-DOX-ADV-003",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "error",
   title: "snippet-rot-detected",
   description: "@snippet file not found or tag marker missing (snippet rot).",
@@ -54,7 +54,7 @@ export const NRP_DOX_ADV_003: Rule = {
 
 export const NRP_DOX_ADV_004: Rule = {
   id: "NRP-DOX-ADV-004",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "error",
   title: "undefined-alias-used",
   description: "Custom alias used in source but not defined in Doxyfile ALIASES.",
@@ -65,7 +65,7 @@ export const NRP_DOX_ADV_004: Rule = {
 
 export const NRP_DOX_ADV_005: Rule = {
   id: "NRP-DOX-ADV-005",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "error",
   title: "undefined-xrefitem-tag",
   description: "@xrefitem custom tag used but not defined in Doxyfile.",
@@ -76,7 +76,7 @@ export const NRP_DOX_ADV_005: Rule = {
 
 export const NRP_DOX_ADV_005b: Rule = {
   id: "NRP-DOX-ADV-005b",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "warning",
   title: "empty-xrefitem-annotation",
   description: "@xrefitem annotation tag has empty content.",
@@ -87,7 +87,7 @@ export const NRP_DOX_ADV_005b: Rule = {
 
 export const NRP_DOX_ADV_006: Rule = {
   id: "NRP-DOX-ADV-006",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "warning",
   title: "unknown-if-section-name",
   description: "@if uses section name not in Doxyfile ENABLED_SECTIONS.",
@@ -98,7 +98,7 @@ export const NRP_DOX_ADV_006: Rule = {
 
 export const NRP_DOX_ADV_006b: Rule = {
   id: "NRP-DOX-ADV-006b",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "error",
   title: "unclosed-if-block",
   description: "@if block with no matching @endif.",
@@ -109,7 +109,7 @@ export const NRP_DOX_ADV_006b: Rule = {
 
 export const NRP_DOX_ADV_007: Rule = {
   id: "NRP-DOX-ADV-007",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "error",
   title: "unclosed-math-block",
   description: "Unclosed @f$ or @f[ math block.",
@@ -120,7 +120,7 @@ export const NRP_DOX_ADV_007: Rule = {
 
 export const NRP_DOX_ADV_007b: Rule = {
   id: "NRP-DOX-ADV-007b",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "warning",
   title: "mathjax-disabled",
   description: "Math tags present but USE_MATHJAX not enabled in Doxyfile.",
@@ -131,7 +131,7 @@ export const NRP_DOX_ADV_007b: Rule = {
 
 export const NRP_DOX_ADV_008: Rule = {
   id: "NRP-DOX-ADV-008",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "error",
   title: "unclosed-plantuml",
   description: "@startuml without matching @enduml.",
@@ -142,7 +142,7 @@ export const NRP_DOX_ADV_008: Rule = {
 
 export const NRP_DOX_ADV_008b: Rule = {
   id: "NRP-DOX-ADV-008b",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "warning",
   title: "plantuml-not-configured",
   description: "PlantUML diagrams present but PLANTUML_JAR_PATH not set in Doxyfile.",
@@ -153,7 +153,7 @@ export const NRP_DOX_ADV_008b: Rule = {
 
 export const NRP_DOX_ADV_009: Rule = {
   id: "NRP-DOX-ADV-009",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "error",
   title: "undefined-cite-key",
   description: "@cite key not found in any .bib file specified in Doxyfile.",
@@ -164,7 +164,7 @@ export const NRP_DOX_ADV_009: Rule = {
 
 export const NRP_DOX_ADV_009b: Rule = {
   id: "NRP-DOX-ADV-009b",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "info",
   title: "unused-citation",
   description: "Citation defined in .bib file but never used in codebase.",
@@ -175,7 +175,7 @@ export const NRP_DOX_ADV_009b: Rule = {
 
 export const NRP_DOX_ADV_010: Rule = {
   id: "NRP-DOX-ADV-010",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "error",
   title: "missing-tag-file",
   description: "TAGFILES references .tag file that does not exist on disk.",
@@ -186,7 +186,7 @@ export const NRP_DOX_ADV_010: Rule = {
 
 export const NRP_DOX_ADV_010b: Rule = {
   id: "NRP-DOX-ADV-010b",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "warning",
   title: "tagfile-no-url-mapping",
   description: "TAG file entry has no URL mapping (only local path).",
@@ -197,7 +197,7 @@ export const NRP_DOX_ADV_010b: Rule = {
 
 export const NRP_DOX_ADV_011: Rule = {
   id: "NRP-DOX-ADV-011",
-  category: "DOXYGEN-ADVANCED",
+  category: "DOXYGEN",
   severity: "warning",
   title: "misplaced-tableofcontents",
   description: "@tableofcontents used outside @page context.",
