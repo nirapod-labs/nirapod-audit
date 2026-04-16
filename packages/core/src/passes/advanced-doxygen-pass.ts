@@ -14,11 +14,10 @@
  * SPDX-FileCopyrightText: 2026 Nirapod Contributors
  */
 
-import type Parser from "tree-sitter";
 import type { Diagnostic } from "@nirapod-audit/protocol";
 import type { FileContext } from "../context.js";
 import type { Pass } from "../pipeline/pass.js";
-import { buildDiagnostic, lineSpan, nodeToSpan } from "../diagnostic.js";
+import { buildDiagnostic, lineSpan } from "../diagnostic.js";
 import {
   NRP_DOX_ADV_001,
   NRP_DOX_ADV_002,
@@ -37,18 +36,17 @@ import {
   NRP_DOX_ADV_010,
   NRP_DOX_ADV_010b,
   NRP_DOX_ADV_011,
-  NRP_DOX_004,
 } from "../rules/doxygen/advanced.js";
+import { NRP_DOX_004 } from "../rules/doxygen/rules.js";
 import {
   loadDoxyfile,
-  expandAliases,
   findCopydocTarget,
-  resolveCopydoc,
   checkSnippetFile,
   validateMathTags,
   validatePlantUml,
   validateCiteKeys,
   validateIfBlocks,
+  validateTagFiles,
   type DoxyfileConfig,
 } from "../utils/doxygen.js";
 
@@ -61,18 +59,45 @@ export class AdvancedDoxygenPass implements Pass {
   readonly name = "AdvancedDoxygenPass";
   readonly languages = ["c", "cpp"] as const;
 
-  static init(projectRoot: string, doxyfilePath: string | null, files: string[]) {
+  static init(projectRoot: string, doxyfilePath: string | null, files: string[]): void {
     allFiles.length = 0;
     allFiles.push(...files);
     doxyfileConfig = loadDoxyfile(doxyfilePath, projectRoot);
   }
 
-  static indexFile(filePath: string, lines: string[]) {
-    linesByFile.set(filePath, [...lines]);
+  static loadBibKeys(_projectRoot: string, _bibFiles: string[]): void {
+    bibKeys.clear();
   }
 
-  static loadBibKeys(projectRoot: string, bibFiles: string[]) {
-    bibKeys.clear();
+  static checkTagFiles(): Diagnostic[] {
+    const results: Diagnostic[] = [];
+    if (!doxyfileConfig || doxyfileConfig.tagFiles.length === 0) {
+      return results;
+    }
+
+    const validation = validateTagFiles(doxyfileConfig.tagFiles);
+
+    for (const entry of validation.missing) {
+      results.push(buildDiagnostic(NRP_DOX_ADV_010, {
+        span: { file: entry.tagFilePath, startLine: 1, startCol: 1, endLine: 1, endCol: 1, snippet: "" },
+        message: `TAG file '${entry.tagFilePath}' does not exist on disk.`,
+        help: "Ensure the tag file path is correct in TAGFILES.",
+        notes: [],
+        relatedSpans: [],
+      }));
+    }
+
+    for (const entry of validation.noUrlMapping) {
+      results.push(buildDiagnostic(NRP_DOX_ADV_010b, {
+        span: { file: entry.tagFilePath, startLine: 1, startCol: 1, endLine: 1, endCol: 1, snippet: "" },
+        message: `TAG file entry has no URL mapping (cross-links will be broken).`,
+        help: "Add URL mapping to TAGFILES entry: path/to/file.tag=https://docs.example.com/",
+        notes: [],
+        relatedSpans: [],
+      }));
+    }
+
+    return results;
   }
 
   run(ctx: FileContext): Diagnostic[] {
@@ -81,10 +106,10 @@ export class AdvancedDoxygenPass implements Pass {
     }
 
     const results: Diagnostic[] = [];
-    const { lines, raw, path: filePath, rootNode, project } = ctx;
+    const { lines, raw, path: filePath, project } = ctx;
 
     this.checkCopydoc(raw, lines, filePath, results);
-    this.checkSnippet(raw, filePath, project.rootDir, results);
+    this.checkSnippet(raw, lines, filePath, project.rootDir, results);
     this.checkAliases(raw, lines, filePath, results);
     this.checkXrefitem(raw, lines, filePath, results);
     this.checkMath(raw, lines, filePath, results);
@@ -96,11 +121,12 @@ export class AdvancedDoxygenPass implements Pass {
     return results;
   }
 
-  private checkCopydoc(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]) {
+  private checkCopydoc(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]): void {
     const regex = /@copydoc\s+(\w+)/g;
     let m: RegExpExecArray | null;
     while ((m = regex.exec(raw)) !== null) {
-      const symbolName = m[1];
+      const symbolName = m[1] ?? "";
+      if (!symbolName) continue;
       const target = findCopydocTarget(symbolName, allFiles, linesByFile);
       if (!target) {
         const lineIdx = lines.findIndex((l) => l.includes(`@copydoc ${symbolName}`));
@@ -115,7 +141,8 @@ export class AdvancedDoxygenPass implements Pass {
     const chainRegex = /@copydoc\s+(\w+)/g;
     const chains: string[] = [];
     while ((m = chainRegex.exec(raw)) !== null) {
-      chains.push(m[1]);
+      const chain = m[1] ?? "";
+      if (chain) chains.push(chain);
     }
 
     if (chains.length > 3) {
@@ -138,11 +165,12 @@ export class AdvancedDoxygenPass implements Pass {
     }
   }
 
-  private checkSnippet(raw: string, lines: readonly string[], filePath: string, projectRoot: string, out: Diagnostic[]) {
+  private checkSnippet(raw: string, lines: readonly string[], filePath: string, projectRoot: string, out: Diagnostic[]): void {
     const regex = /@snippet\s+(.+)/g;
     let m: RegExpExecArray | null;
     while ((m = regex.exec(raw)) !== null) {
-      const snippetRef = m[1].trim();
+      const snippetRef = (m[1] ?? "").trim();
+      if (!snippetRef) continue;
       const result = checkSnippetFile(snippetRef, projectRoot);
 
       if (!result.valid) {
@@ -156,13 +184,14 @@ export class AdvancedDoxygenPass implements Pass {
     }
   }
 
-  private checkAliases(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]) {
+  private checkAliases(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]): void {
     if (!doxyfileConfig) return;
 
     const aliasRegex = /@(\w+)/g;
     let m: RegExpExecArray | null;
     while ((m = aliasRegex.exec(raw)) !== null) {
-      const aliasName = m[1];
+      const aliasName = m[1] ?? "";
+      if (!aliasName) continue;
       if (!doxyfileConfig.aliases.has(aliasName)) {
         const lineIdx = lines.findIndex((l) => l.includes(`@${aliasName}`));
         out.push(buildDiagnostic(NRP_DOX_ADV_004, {
@@ -174,14 +203,16 @@ export class AdvancedDoxygenPass implements Pass {
     }
   }
 
-  private checkXrefitem(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]) {
+  private checkXrefitem(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]): void {
     if (!doxyfileConfig) return;
 
     const xrefRegex = /@(\w+)\s+(.+)/g;
     let m: RegExpExecArray | null;
     while ((m = xrefRegex.exec(raw)) !== null) {
-      const tagName = m[1];
-      const content = m[2].trim();
+      const tagName = m[1] ?? "";
+      const content = (m[2] ?? "").trim();
+
+      if (!tagName) continue;
 
       if (!doxyfileConfig.xrefitemTags.has(tagName)) {
         const lineIdx = lines.findIndex((l) => l.includes(`@${tagName}`));
@@ -203,12 +234,11 @@ export class AdvancedDoxygenPass implements Pass {
     }
   }
 
-  private checkMath(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]) {
+  private checkMath(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]): void {
     const hasMath = /@[f\$|f\[]/.test(raw);
     if (!hasMath) return;
 
     const configMathJax = doxyfileConfig?.useMathJax ?? false;
-
     const validation = validateMathTags(raw, configMathJax);
 
     for (const err of validation.errors) {
@@ -232,7 +262,7 @@ export class AdvancedDoxygenPass implements Pass {
     }
   }
 
-  private checkPlantUml(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]) {
+  private checkPlantUml(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]): void {
     const hasPlantUml = raw.includes("@startuml");
     if (!hasPlantUml) return;
 
@@ -260,7 +290,7 @@ export class AdvancedDoxygenPass implements Pass {
     }
   }
 
-  private checkCite(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]) {
+  private checkCite(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]): void {
     if (!doxyfileConfig || doxyfileConfig.citeBibFiles.length === 0) return;
 
     const validation = validateCiteKeys(raw, bibKeys);
@@ -275,7 +305,7 @@ export class AdvancedDoxygenPass implements Pass {
     }
   }
 
-  private checkIfBlocks(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]) {
+  private checkIfBlocks(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]): void {
     const enabledSections = doxyfileConfig?.enabledSections ?? new Set();
     const validation = validateIfBlocks(raw, enabledSections);
 
@@ -298,7 +328,7 @@ export class AdvancedDoxygenPass implements Pass {
     }
   }
 
-  private checkTableOfContents(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]) {
+  private checkTableOfContents(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]): void {
     if (!raw.includes("@tableofcontents")) return;
 
     const hasPage = raw.includes("@page");
@@ -311,3 +341,4 @@ export class AdvancedDoxygenPass implements Pass {
       }));
     }
   }
+}

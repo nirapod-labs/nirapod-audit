@@ -175,18 +175,18 @@ function MenuPanel({ selected }: MenuPanelProps): React.ReactElement {
             {item.divider && <Text dimColor>{"  ─────────────────────────────────────────────────"}</Text>}
             <Box>
               <Text>
-                <Text bold color={isSelected ? "magentaBright" : undefined}>
+                <Text bold color={isSelected ? "magentaBright" : "white"}>
                   {isSelected ? "  ▶ " : "    "}
                 </Text>
                 <Text
                   bold={isSelected}
-                  color={isSelected ? "white" : isExit ? "dim" : undefined}
+                  color={isSelected ? "white" : "dim"}
                 >
                   {`[${item.key}] `}
                 </Text>
                 <Text
                   bold={isSelected}
-                  color={isSelected ? "white" : isExit ? "dim" : undefined}
+                  color={isSelected ? "white" : "dim"}
                 >
                   {item.label.padEnd(18)}
                 </Text>

@@ -47,7 +47,10 @@ function unquote(val: string): string {
 function parseDoxyfileValue(line: string): { key: string; value: string } | null {
   const match = line.match(/^\s*(\w+)\s*=\s*(.*)$/);
   if (!match) return null;
-  return { key: match[1], value: match[2].trim() };
+  const key = match[1];
+  const value = match[2]?.trim() ?? "";
+  if (!key) return null;
+  return { key, value };
 }
 
 function parseAliasValue(value: string): Map<string, string> {
@@ -55,8 +58,10 @@ function parseAliasValue(value: string): Map<string, string> {
   const regex = /(\w+)\s*=\s*([^\n]+)/g;
   let m: RegExpExecArray | null;
   while ((m = regex.exec(value)) !== null) {
-    const name = m[1];
-    const expanded = unquote(m[2]).replace(/\\"/g, '"').replace(/\\n/g, "\n");
+    const name = m[1] ?? "";
+    const raw = m[2] ?? "";
+    if (!name) continue;
+    const expanded = unquote(raw).replace(/\\"/g, '"').replace(/\\n/g, "\n");
     aliases.set(name, expanded);
   }
   return aliases;
@@ -103,7 +108,7 @@ export function loadDoxyfile(
         config.aliases = parseAliasValue(unquoted);
         for (const [name, _] of config.aliases) {
           if (name.startsWith("xrefitem ")) {
-            const tagName = name.replace("xrefitem ", "").split(" ")[0];
+            const tagName = name.replace("xrefitem ", "").split(" ")[0] ?? "";
             config.xrefitemTags.add(tagName);
           }
         }
@@ -123,11 +128,13 @@ export function loadDoxyfile(
           if (!entry) continue;
           const parts = entry.split(/=(.*)$/);
           if (parts.length === 2) {
+            const tagPath = parts[0] ?? "";
+            const urlMap = parts[1] ?? null;
             config.tagFiles.push({
-              tagFilePath: path.isAbsolute(parts[0])
-                ? parts[0]
-                : path.join(projectRoot, parts[0]),
-              urlMapping: parts[1] || null,
+              tagFilePath: path.isAbsolute(tagPath)
+                ? tagPath
+                : path.join(projectRoot, tagPath),
+              urlMapping: urlMap,
             });
           }
         }
@@ -170,10 +177,16 @@ export function findCopydocTarget(
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      if (!line.includes(`/**`) && !line.includes("/*!")) continue;
+      if (!line) continue;
+      if (!line.includes("/**") && !line.includes("/*!")) continue;
 
       let j = i;
-      while (j < lines.length && !lines[j].includes("*/")) j++;
+      while (j < lines.length) {
+        const nextLine = lines[j];
+        if (!nextLine) break;
+        if (nextLine.includes("*/")) break;
+        j++;
+      }
       if (j >= lines.length) continue;
 
       const block = lines.slice(i, j + 1).join("\n");
@@ -214,7 +227,7 @@ export function resolveCopydoc(
     const match = current.match(/@copydoc\s+(\w+)/);
     if (!match) break;
 
-    const targetName = match[1];
+    const targetName = match[1] ?? "";
     if (targetName === chained) {
       return { resolved: current, depth, error: "self-referential @copydoc" };
     }
@@ -245,10 +258,16 @@ export function checkSnippetFile(
     return { filePath: "", tagName: "", valid: false, error: "invalid @snippet format" };
   }
 
-  const filePath = path.isAbsolute(match[1])
-    ? match[1]
-    : path.join(projectRoot, match[1]);
-  const tagName = match[2];
+  const match1 = match[1] ?? "";
+  const match2 = match[2] ?? "";
+  const filePath = path.isAbsolute(match1)
+    ? match1
+    : path.join(projectRoot, match1);
+  const tagName = match2;
+
+  if (!filePath) {
+    return { filePath: "", tagName: "", valid: false, error: "invalid @snippet format" };
+  }
 
   if (!fs.existsSync(filePath)) {
     return { filePath, tagName, valid: false, error: "snippet file not found" };
@@ -346,7 +365,8 @@ export function validateCiteKeys(
 
   let m: RegExpExecArray | null;
   while ((m = regex.exec(docBlock)) !== null) {
-    const key = m[1];
+    const key = m[1] ?? "";
+    if (!key) continue;
     used.add(key);
     if (!bibKeys.has(key)) {
       missing.push(key);
@@ -366,7 +386,8 @@ export function validateIfBlocks(
 
   let m: RegExpExecArray | null;
   while ((m = ifRegex.exec(docBlock)) !== null) {
-    const sectionName = m[1];
+    const sectionName = m[1] ?? "";
+    if (!sectionName) continue;
     if (!enabledSections.has(sectionName)) {
       unknown.push(sectionName);
     }
@@ -377,4 +398,21 @@ export function validateIfBlocks(
   const unclosed = ifCount > endifCount;
 
   return { unknown, unclosed };
+}
+
+export function validateTagFiles(
+  tagFiles: TagFileEntry[],
+): { missing: TagFileEntry[]; noUrlMapping: TagFileEntry[] } {
+  const missing: TagFileEntry[] = [];
+  const noUrlMapping: TagFileEntry[] = [];
+
+  for (const entry of tagFiles) {
+    if (!fs.existsSync(entry.tagFilePath)) {
+      missing.push(entry);
+    } else if (!entry.urlMapping) {
+      noUrlMapping.push(entry);
+    }
+  }
+
+  return { missing, noUrlMapping };
 }
