@@ -130,7 +130,6 @@ export interface Span {
 export type RuleCategory =
   | "LICENSE"
   | "DOXYGEN"
-  | "DOXYGEN-ADVANCED"
   | "TSDOC"
   | "RUSTDOC"
   | "NASA"

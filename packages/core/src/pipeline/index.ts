@@ -31,6 +31,7 @@ import { buildFileContext, type ProjectContext } from "../context.js";
 import type { Pass } from "./pass.js";
 import { LexPass } from "../passes/lex-pass.js";
 import { AstPass } from "../passes/ast-pass.js";
+import { AdvancedDoxygenPass } from "../passes/advanced-doxygen-pass.js";
 import { NasaPass } from "../passes/nasa-pass.js";
 import { CryptoPass } from "../passes/crypto-pass.js";
 import { MemoryPass } from "../passes/memory-pass.js";
@@ -106,7 +107,7 @@ function applyOverrides(
  * Later phases append AstPass, NasaPass, CryptoPass, MemoryPass, and StylePass.
  */
 function buildPasses(): Pass[] {
-  return [new LexPass(), new AstPass(), new NasaPass(), new CryptoPass(), new MemoryPass()];
+  return [new LexPass(), new AstPass(), new AdvancedDoxygenPass(), new NasaPass(), new CryptoPass(), new MemoryPass()];
 }
 
 /**
@@ -164,6 +165,10 @@ export async function* runPipeline(
   yield { type: "audit_start", totalFiles: allFiles.length, config };
 
   const passes = buildPasses();
+
+  const doxyfilePath = path.join(rootDir, "Doxyfile");
+  AdvancedDoxygenPass.init(rootDir, doxyfilePath, allFiles);
+
   const fileResults: FileResult[] = [];
   const ruleHits: Record<string, number> = {};
   const startTime = performance.now();
