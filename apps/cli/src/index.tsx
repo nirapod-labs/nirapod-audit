@@ -91,7 +91,7 @@ const command = rest[0];
 
 // No command → interactive home
 if (!command) {
-  runHome();
+  await runHome();
   process.exit(0);
 }
 
