@@ -184,7 +184,13 @@ export async function* runPipeline(
       continue;
     }
 
-    const ctx = buildFileContext(filePath, raw, project);
+    let ctx;
+    try {
+      ctx = buildFileContext(filePath, raw, project);
+    } catch (err) {
+      yield { type: "error", message: `Parser crashed on ${filePath}: ${err}` };
+      continue;
+    }
 
     // Incremental: skip unchanged files
     const relPath = path.relative(rootDir, filePath);

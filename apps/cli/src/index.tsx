@@ -110,10 +110,21 @@ switch (command) {
     const resolvedTarget = path.resolve(targetPath);
 
     // Enforce nirapod-skills existence
+    const findRoot = (startDir: string) => {
+      let dir = startDir;
+      while (true) {
+        if (existsSync(path.join(dir, ".agents")) || existsSync(path.join(dir, "package.json"))) return dir;
+        const parent = path.dirname(dir);
+        if (parent === dir) break;
+        dir = parent;
+      }
+      return startDir;
+    };
+    const rootDir = findRoot(resolvedTarget);
     const skillPaths = [
-      path.join(resolvedTarget, ".agents", "skills"),
-      path.join(resolvedTarget, ".claude", "skills"),
-      path.join(resolvedTarget, ".cursor", "skills"),
+      path.join(rootDir, ".agents", "skills"),
+      path.join(rootDir, ".claude", "skills"),
+      path.join(rootDir, ".cursor", "skills"),
     ];
     const hasSkills = skillPaths.some((p) => existsSync(p));
     if (!hasSkills) {
