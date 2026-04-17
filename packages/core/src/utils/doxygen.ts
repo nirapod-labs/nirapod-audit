@@ -44,13 +44,14 @@ function unquote(val: string): string {
   return val.replace(/^["']|["']$/g, "").trim();
 }
 
-function parseDoxyfileValue(line: string): { key: string; value: string } | null {
-  const match = line.match(/^\s*(\w+)\s*=\s*(.*)$/);
+function parseDoxyfileValue(line: string): { key: string; value: string; append: boolean } | null {
+  const match = line.match(/^\s*(\w+)\s*(\+?=)\s*(.*)$/);
   if (!match) return null;
   const key = match[1];
-  const value = match[2]?.trim() ?? "";
+  const append = match[2] === "+=";
+  const value = match[3]?.trim() ?? "";
   if (!key) return null;
-  return { key, value };
+  return { key, value, append };
 }
 
 function parseAliasValue(value: string): Map<string, string> {
@@ -100,16 +101,19 @@ export function loadDoxyfile(
     const kv = parseDoxyfileValue(line);
     if (!kv) continue;
 
-    const { key, value } = kv;
+    const { key, value, append } = kv;
     const unquoted = unquote(value);
 
     switch (key) {
       case "ALIASES":
-        config.aliases = parseAliasValue(unquoted);
-        for (const [name, _] of config.aliases) {
-          if (name.startsWith("xrefitem ")) {
-            const tagName = name.replace("xrefitem ", "").split(" ")[0] ?? "";
-            config.xrefitemTags.add(tagName);
+        const newAliases = parseAliasValue(unquoted);
+        if (!append && config.aliases.size > 0) {
+           config.aliases.clear();
+        }
+        for (const [name, replacement] of newAliases) {
+          config.aliases.set(name, replacement);
+          if (replacement.includes("xrefitem ")) {
+            config.xrefitemTags.add(name);
           }
         }
         break;
@@ -207,6 +211,23 @@ export function findCopydocTarget(
       }
 
       i = j;
+    }
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i] ?? "";
+      if (!line.includes(symbolName)) continue;
+
+      const fnMatch = line.match(
+        /^\s*(?:static\s+)?(?:inline\s+)?(?:unsigned\s+|int8_t|uint8_t|int16_t|uint16_t|int32_t|uint32_t|int64_t|uint64_t|bool|void|char|float|double)\s+(\w+)\s*\([^)]*\)\s*;/,
+      );
+      if (fnMatch?.[1] === symbolName) {
+        return { symbolName, docBlock: line, resolved: true };
+      }
+
+      const macroMatch = line.match(/^\s*#\s*define\s+(\w+)/);
+      if (macroMatch?.[1] === symbolName) {
+        return { symbolName, docBlock: line, resolved: true };
+      }
     }
   }
   return null;

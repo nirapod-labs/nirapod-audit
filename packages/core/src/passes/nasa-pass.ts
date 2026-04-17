@@ -193,7 +193,7 @@ function hasLoopBoundComment(
   for (let i = Math.max(0, loopRow - 3); i < loopRow; i++) {
     const line = (lines[i] ?? "").trim();
     if (
-      (line.startsWith("//") || line.startsWith("*")) &&
+      (line.startsWith("//") || line.startsWith("/*") || line.startsWith("*") || line.startsWith("*/")) &&
       (boundPattern.test(line) || numberPattern.test(line))
     ) {
       return true;
@@ -202,7 +202,10 @@ function hasLoopBoundComment(
 
   // Also check inline comment on the same line
   const loopLine = (lines[loopRow] ?? "").trim();
-  if (loopLine.includes("//") && boundPattern.test(loopLine)) {
+  if (
+    (loopLine.includes("//") || loopLine.includes("/*")) &&
+    (boundPattern.test(loopLine) || numberPattern.test(loopLine))
+  ) {
     return true;
   }
 

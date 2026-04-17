@@ -18,6 +18,8 @@ import type { Diagnostic } from "@nirapod-audit/protocol";
 import type { FileContext } from "../context.js";
 import type { Pass } from "../pipeline/pass.js";
 import { buildDiagnostic, lineSpan } from "../diagnostic.js";
+import fs from "node:fs";
+import path from "node:path";
 import {
   NRP_DOX_ADV_001,
   NRP_DOX_ADV_002,
@@ -55,13 +57,50 @@ const allFiles: string[] = [];
 const linesByFile = new Map<string, string[]>();
 const bibKeys = new Set<string>();
 
+const DOXYGEN_BUILTIN_COMMANDS = new Set([
+  "a", "addindex", "addtogroup", "anchor", "arg", "attention", "author", "authors",
+  "b", "brief", "bug", "c", "callergraph", "callgraph", "category", "check", "cite",
+  "class", "code", "cond", "copybrief", "copydetails", "copydoc", "copyright", "date",
+  "def", "defgroup", "deprecated", "details", "dir", "docbookonly", "dontinclude",
+  "dot", "dotfile", "e", "else", "elseif", "em", "endcode", "endcond", "enddocbookonly",
+  "enddot", "endhtmlonly", "endif", "endinternal", "endlatexonly", "endlink",
+  "endmanonly", "endmsc", "endparblock", "endrtfonly", "endsecreflist", "enduml",
+  "endverbatim", "endxmlonly", "enum", "example", "exception", "extends", "f",
+  "file", "fn", "headerfile", "hidecallergraph", "hidecallgraph", "hideinitializer",
+  "htmlinclude", "htmlonly", "idlexcept", "if", "ifnot", "image", "implements",
+  "include", "includedoc", "includelineno", "ingroup", "internal", "invariant",
+  "interface", "latexinclude", "latexonly", "li", "line", "link", "mainpage",
+  "manonly", "memberof", "msc", "mscfile", "n", "name", "namespace", "nosubgrouping",
+  "note", "overload", "p", "package", "page", "par", "paragraph", "param", "parblock",
+  "post", "pre", "private", "privatesection", "property", "protected",
+  "protectedsection", "protocol", "public", "publicsection", "pure", "ref",
+  "refitem", "related", "relates", "relatedalso", "relatesalso", "remark",
+  "remarks", "result", "return", "returns", "retval", "rtfonly", "sa",
+  "secreflist", "section", "see", "short", "showinitializer", "since", "skip",
+  "skipline", "snippet", "snippetdoc", "snippetlineno", "startuml", "struct",
+  "subpage", "subsection", "subsubsection", "tableofcontents", "test", "throw",
+  "throws", "todo", "tparam", "typedef", "union", "until", "var", "verbatim",
+  "verbinclude", "version", "vhdlflow", "warning", "weakgroup", "xmlonly",
+  "xrefitem"
+]);
+
 export class AdvancedDoxygenPass implements Pass {
   readonly name = "AdvancedDoxygenPass";
   readonly languages = ["c", "cpp"] as const;
 
   static init(projectRoot: string, doxyfilePath: string | null, files: string[]): void {
     allFiles.length = 0;
+    linesByFile.clear();
     allFiles.push(...files);
+
+    for (const filePath of files) {
+      const fullPath = path.isAbsolute(filePath) ? filePath : path.join(projectRoot, filePath);
+      if (fs.existsSync(fullPath)) {
+        const content = fs.readFileSync(fullPath, "utf-8");
+        linesByFile.set(filePath, content.split("\n"));
+      }
+    }
+
     doxyfileConfig = loadDoxyfile(doxyfilePath, projectRoot);
   }
 
@@ -158,16 +197,6 @@ export class AdvancedDoxygenPass implements Pass {
         help: "Reduce the @copydoc chain depth to 3 or fewer hops.",
       }));
     }
-
-    if (raw.includes("@snippet")) {
-      out.push(buildDiagnostic(NRP_DOX_004, {
-        span: lineSpan(filePath, 1, lines as string[]),
-        message: "@snippet reference verified (counts as @details fulfilled).",
-        notes: [],
-        help: null,
-        relatedSpans: [],
-      }));
-    }
   }
 
   private checkSnippet(raw: string, lines: readonly string[], filePath: string, projectRoot: string, out: Diagnostic[]): void {
@@ -196,12 +225,13 @@ export class AdvancedDoxygenPass implements Pass {
     let m: RegExpExecArray | null;
     while ((m = aliasRegex.exec(raw)) !== null) {
       const aliasName = m[1] ?? "";
-      if (!aliasName) continue;
+      if (!aliasName || DOXYGEN_BUILTIN_COMMANDS.has(aliasName)) continue;
+      
       if (!doxyfileConfig.aliases.has(aliasName)) {
         const lineIdx = lines.findIndex((l) => l.includes(`@${aliasName}`));
         out.push(buildDiagnostic(NRP_DOX_ADV_004, {
           span: lineSpan(filePath, (lineIdx >= 0 ? lineIdx : 0) + 1, lines as string[]),
-          message: `Custom alias '@${aliasName}' used but not defined in Doxyfile ALIASES.`,
+          message: `Custom alias '@${aliasName}' used but not defined in Doxyfile ALIASES. (PATCHED YAY)`,
           help: `Add '${aliasName}=...' to ALIASES in Doxyfile.`,
         }));
       }
@@ -211,22 +241,29 @@ export class AdvancedDoxygenPass implements Pass {
   private checkXrefitem(raw: string, lines: readonly string[], filePath: string, out: Diagnostic[]): void {
     if (!doxyfileConfig) return;
 
-    const xrefRegex = /@(\w+)\s+(.+)/g;
+    // Check literal @xrefitem usage
+    const literalXrefRegex = /@xrefitem\s+(\w+)/g;
     let m: RegExpExecArray | null;
-    while ((m = xrefRegex.exec(raw)) !== null) {
+    while ((m = literalXrefRegex.exec(raw)) !== null) {
+      const key = m[1] ?? "";
+      if (key && !doxyfileConfig.xrefitemTags.has(key)) {
+        const lineIdx = lines.findIndex((l) => l.includes(`@xrefitem ${key}`));
+        out.push(buildDiagnostic(NRP_DOX_ADV_005, {
+          span: lineSpan(filePath, (lineIdx >= 0 ? lineIdx : 0) + 1, lines as string[]),
+          message: `@xrefitem tag '@${key}' used but not defined in Doxyfile.`,
+          help: `Define '${key}' via ALIASES in Doxyfile.`,
+        }));
+      }
+    }
+
+    // Check empty annotations for known xrefitems aliases
+    const tagRegex = /@(\w+)(?:\s+([^\n]*))?/g;
+    while ((m = tagRegex.exec(raw)) !== null) {
       const tagName = m[1] ?? "";
       const content = (m[2] ?? "").trim();
 
       if (!tagName) continue;
-
-      if (!doxyfileConfig.xrefitemTags.has(tagName)) {
-        const lineIdx = lines.findIndex((l) => l.includes(`@${tagName}`));
-        out.push(buildDiagnostic(NRP_DOX_ADV_005, {
-          span: lineSpan(filePath, (lineIdx >= 0 ? lineIdx : 0) + 1, lines as string[]),
-          message: `@xrefitem tag '@${tagName}' used but not defined in Doxyfile.`,
-          help: `Define '@${tagName}' via ALIASES in Doxyfile.`,
-        }));
-      }
+      if (!doxyfileConfig.xrefitemTags.has(tagName)) continue;
 
       if (!content || content.length === 0) {
         const lineIdx = lines.findIndex((l) => l.includes(`@${tagName}`));
