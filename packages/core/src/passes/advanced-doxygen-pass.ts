@@ -108,7 +108,6 @@ export class AdvancedDoxygenPass implements Pass {
     const results: Diagnostic[] = [];
     const { lines, raw, path: filePath, project } = ctx;
 
-    // Check if file has advanced Doxygen tags - if not, skip early
     const hasAdvancedTags = raw.includes("@snippet") || raw.includes("@copydoc") || raw.includes("@alias") || raw.includes("@xrefitem") || raw.includes("@tableofcontents") || raw.includes("@if ") || raw.includes("@f$") || raw.includes("@f[") || raw.includes("@startuml") || raw.includes("@cite");
     if (!hasAdvancedTags) {
       return results;
