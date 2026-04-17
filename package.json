@@ -7,10 +7,13 @@
     "apps/cli"
   ],
   "scripts": {
-    "build":   "bun run --filter '*' build",
-    "test":    "bun test",
-    "audit":   "bun run apps/cli/src/index.tsx",
-    "dev":     "bun --watch run apps/cli/src/index.tsx",
-    "check":   "bun run --filter '*' typecheck"
+    "build": "bun run --filter '*' build",
+    "test": "bun test",
+    "audit": "bun run apps/cli/src/index.tsx",
+    "dev": "bun --watch run apps/cli/src/index.tsx",
+    "check": "bun run --filter '*' typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.2"
   }
 }

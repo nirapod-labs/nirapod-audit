@@ -17,6 +17,7 @@
 import type { Rule } from "@nirapod-audit/protocol";
 import { LICENSE_RULES } from "./license/rules.js";
 import { DOXYGEN_RULES } from "./doxygen/rules.js";
+import { DOXYGEN_ADVANCED_RULES } from "./doxygen/advanced.js";
 import { STYLE_RULES } from "./style/rules.js";
 import { NASA_RULES } from "./nasa/rules.js";
 import { CRYPTO_RULES } from "./crypto/rules.js";
@@ -24,6 +25,7 @@ import { MEMORY_RULES } from "./memory/rules.js";
 
 export { LICENSE_RULES } from "./license/rules.js";
 export { DOXYGEN_RULES } from "./doxygen/rules.js";
+export { DOXYGEN_ADVANCED_RULES } from "./doxygen/advanced.js";
 export { STYLE_RULES } from "./style/rules.js";
 export { NASA_RULES } from "./nasa/rules.js";
 export { CRYPTO_RULES } from "./crypto/rules.js";
@@ -40,6 +42,7 @@ export { MEMORY_RULES } from "./memory/rules.js";
 export const ALL_RULES: readonly Rule[] = [
   ...LICENSE_RULES,
   ...DOXYGEN_RULES,
+  ...DOXYGEN_ADVANCED_RULES,
   ...NASA_RULES,
   ...CRYPTO_RULES,
   ...MEMORY_RULES,

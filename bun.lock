@@ -4,10 +4,13 @@
   "workspaces": {
     "": {
       "name": "nirapod-audit-workspace",
+      "devDependencies": {
+        "typescript": "^6.0.2",
+      },
     },
     "apps/cli": {
       "name": "@nirapod-audit/cli",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@nirapod-audit/core": "workspace:*",
         "@nirapod-audit/protocol": "workspace:*",
@@ -23,7 +26,7 @@
     },
     "packages/core": {
       "name": "@nirapod-audit/core",
-      "version": "0.1.0",
+      "version": "0.3.0",
       "dependencies": {
         "@nirapod-audit/protocol": "workspace:*",
         "tree-sitter": "^0.21.1",
@@ -37,7 +40,7 @@
     },
     "packages/protocol": {
       "name": "@nirapod-audit/protocol",
-      "version": "0.1.0",
+      "version": "0.2.0",
     },
   },
   "packages": {
@@ -146,6 +149,8 @@
     "tree-sitter-cpp": ["tree-sitter-cpp@0.22.3", "", { "dependencies": { "node-addon-api": "^8.0.0", "node-gyp-build": "^4.8.1" }, "peerDependencies": { "tree-sitter": "^0.21.1" } }, "sha512-p7w5903L/koqTQFVDwyyX0vjioxoZu2G4zT2ZHVG8DvLQbWN6OjNAqfMsCi+WdVkfMgU+7j06hS8i3j6Q0sPNQ=="],
 
     "type-fest": ["type-fest@4.41.0", "", {}, "sha512-TeTSQ6H5YHvpqVwBRcnLDCBnDOHWYu7IvGbHT6N8AOymcr9PJGjc1GTtiWZTYg0NCgYwvnYWEkVChQAr9bjfwA=="],
+
+    "typescript": ["typescript@6.0.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ=="],
 
     "undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
