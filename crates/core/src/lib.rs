@@ -71,6 +71,7 @@ pub mod context;
 pub mod diagnostic;
 pub mod parser;
 pub mod pipeline;
+pub mod rules;
 pub mod types;
 
 pub use config::{find_config_file, load_config, LoadedConfig, CONFIG_FILENAME};
@@ -84,6 +85,7 @@ pub use parser::{
     QueryText, SourceLanguage,
 };
 pub use pipeline::{discover_audit_target, AuditTarget, DiscoverAuditTargetError};
+pub use rules::{find_rule, ALL_RULES, LICENSE_RULES};
 pub use types::{
     AuditConfig, AuditEvent, AuditSummary, Diagnostic, DocSystem, FileResult, FileRole,
     PlatformHint, RelatedSpan, Rule, RuleCategory, RuleOverride, RuleOverrideSeverity,

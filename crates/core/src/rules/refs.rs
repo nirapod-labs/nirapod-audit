@@ -1,0 +1,85 @@
+// SPDX-License-Identifier: APACHE-2.0
+// SPDX-FileCopyrightText: 2026 Nirapod Contributors
+
+//! Centralized reference path helpers for rule documentation.
+
+use crate::RuleReference;
+
+/// C and C++ license and headers reference.
+pub const LICENSE_HEADERS_C: &str = concat!(
+    ".agents/skills/nirapod-embedded-engineering/references",
+    "/license-and-headers.md"
+);
+
+/// TypeScript and Rust license and headers reference.
+pub const LICENSE_HEADERS_TS: &str = concat!(
+    ".agents/skills/write-documented-code/references",
+    "/license-and-headers-ts-rust.md"
+);
+
+/// Embedded engineering skill main instructions.
+pub const EMBEDDED_SKILL: &str = ".agents/skills/nirapod-embedded-engineering/SKILL.md";
+
+/// Builds a structured local file reference.
+///
+/// # Examples
+///
+/// ```
+/// use nirapod_audit_core::rules::refs::{local_ref, LICENSE_HEADERS_C};
+///
+/// let reference = local_ref("License Header Quick Reference", LICENSE_HEADERS_C, Some("Standard Header Template"));
+/// assert_eq!(reference.file.as_deref(), Some(LICENSE_HEADERS_C));
+/// ```
+#[must_use]
+pub fn local_ref(label: &str, file: &str, section: Option<&str>) -> RuleReference {
+    RuleReference {
+        label: label.to_owned(),
+        file: Some(file.to_owned()),
+        section: section.map(str::to_owned),
+        url: None,
+    }
+}
+
+/// Builds a structured external URL reference.
+///
+/// # Examples
+///
+/// ```
+/// use nirapod_audit_core::rules::refs::url_ref;
+///
+/// let reference = url_ref("SPDX License List", "https://spdx.org/licenses/");
+/// assert_eq!(reference.url.as_deref(), Some("https://spdx.org/licenses/"));
+/// ```
+#[must_use]
+pub fn url_ref(label: &str, url: &str) -> RuleReference {
+    RuleReference {
+        label: label.to_owned(),
+        file: None,
+        section: None,
+        url: Some(url.to_owned()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{local_ref, url_ref, LICENSE_HEADERS_C};
+
+    #[test]
+    fn builds_local_reference() {
+        let reference = local_ref(
+            "License Header Quick Reference",
+            LICENSE_HEADERS_C,
+            Some("Standard Header Template"),
+        );
+        assert_eq!(
+            reference.section.as_deref(),
+            Some("Standard Header Template")
+        );
+    }
+
+    #[test]
+    fn builds_url_reference() {
+        let reference = url_ref("SPDX License List", "https://spdx.org/licenses/");
+        assert_eq!(reference.url.as_deref(), Some("https://spdx.org/licenses/"));
+    }
+}
