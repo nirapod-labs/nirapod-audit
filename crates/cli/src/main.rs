@@ -13,6 +13,7 @@
 #![deny(unsafe_code)]
 
 mod commands;
+mod print;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
