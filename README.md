@@ -204,6 +204,43 @@ bun run scripts/generate-rules-doc.ts
 5. Run `bun run scripts/generate-rules-doc.ts` to regenerate `docs/RULES.md`.
 6. Run `bun test` to confirm the new fixture is caught.
 
+### Commit messages
+
+This repo uses a small conventional-commit style lint rule for commit subjects.
+
+Expected format:
+
+```text
+type(scope): subject
+```
+
+Allowed types:
+
+```text
+feat fix docs refactor test chore ci build perf revert
+```
+
+Examples:
+
+```text
+feat(rust): bootstrap workspace
+feat(rust): port config loading
+chore(repo): add commit message linting
+```
+
+Install the local hook once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+You can also run the check manually:
+
+```bash
+printf 'feat(rust): bootstrap workspace\n' > /tmp/commit-msg.txt
+bun run commitlint /tmp/commit-msg.txt
+```
+
 ---
 
 ## CI

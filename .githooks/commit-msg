@@ -1,0 +1,8 @@
+#!/bin/sh
+# SPDX-License-Identifier: APACHE-2.0
+# SPDX-FileCopyrightText: 2026 Nirapod Contributors
+
+set -eu
+
+repo_root="$(git rev-parse --show-toplevel)"
+exec sh "$repo_root/scripts/commitlint.sh" "$1"
