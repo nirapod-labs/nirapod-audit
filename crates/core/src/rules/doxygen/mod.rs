@@ -9,6 +9,7 @@
 
 mod declarations;
 mod file_header;
+mod functions;
 mod grouping;
 
 use crate::Rule;
@@ -16,6 +17,7 @@ use std::sync::LazyLock;
 
 pub use declarations::DECLARATION_RULES;
 pub use file_header::FILE_HEADER_RULES;
+pub use functions::FUNCTION_RULES;
 pub use grouping::GROUPING_RULES;
 
 /// All Doxygen rules currently defined in the Rust registry.
@@ -23,6 +25,7 @@ pub static DOXYGEN_RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
     FILE_HEADER_RULES
         .iter()
         .chain(DECLARATION_RULES.iter())
+        .chain(FUNCTION_RULES.iter())
         .chain(GROUPING_RULES.iter())
         .cloned()
         .collect()
@@ -35,7 +38,7 @@ mod tests {
 
     #[test]
     fn exposes_current_doxygen_rules() {
-        assert_eq!(DOXYGEN_RULES.len(), 20);
+        assert_eq!(DOXYGEN_RULES.len(), 22);
         assert_eq!(DOXYGEN_RULES[0].category, RuleCategory::Doxygen);
         assert_eq!(DOXYGEN_RULES[2].severity, Severity::Warning);
         let module_doc_rule = DOXYGEN_RULES
@@ -53,5 +56,10 @@ mod tests {
             .find(|rule| rule.id == "NRP-DOX-020")
             .expect("missing ingroup rule");
         assert_eq!(ingroup_rule.severity, Severity::Error);
+        let retval_rule = DOXYGEN_RULES
+            .iter()
+            .find(|rule| rule.id == "NRP-DOX-016")
+            .expect("missing retval rule");
+        assert_eq!(retval_rule.severity, Severity::Warning);
     }
 }

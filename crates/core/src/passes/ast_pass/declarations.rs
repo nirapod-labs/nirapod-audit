@@ -6,7 +6,7 @@
 use super::helpers::{
     collect_nodes_by_kind, doc_comment_before, doc_param_names, doxygen_rule,
     first_descendant_by_kind, first_identifier_node, first_identifier_text, has_tag, node_text,
-    returns_void, source_param_names,
+    return_type_text, returns_void, source_param_names,
 };
 use crate::{build_diagnostic, node_to_span, Diagnostic, DiagnosticInit, FileContext};
 
@@ -169,6 +169,27 @@ pub(super) fn check_function_declarations(ctx: &FileContext, out: &mut Vec<Diagn
             ));
         }
 
+        if has_incomplete_return_docs(declaration, &doc.text, &ctx.raw) {
+            out.push(build_diagnostic(
+                doxygen_rule("NRP-DOX-016"),
+                DiagnosticInit {
+                    span: node_to_span(name_node, ctx.path.display().to_string(), &ctx.lines),
+                    message: format!(
+                        "Function '{fn_name}' documents @return but does not list concrete @retval cases."
+                    ),
+                    notes: vec![
+                        "Status-like return values should enumerate concrete success and error outcomes."
+                            .to_owned(),
+                    ],
+                    help: Some(
+                        "Add one or more @retval entries documenting concrete return codes."
+                            .to_owned(),
+                    ),
+                    related_spans: Vec::new(),
+                },
+            ));
+        }
+
         if !has_tag(&doc.text, "pre") && !has_tag(&doc.text, "post") {
             out.push(build_diagnostic(
                 doxygen_rule("NRP-DOX-017"),
@@ -203,5 +224,67 @@ pub(super) fn check_function_declarations(ctx: &FileContext, out: &mut Vec<Diagn
                 },
             ));
         }
+
+        if has_constraint_language(&doc.text)
+            && !has_tag(&doc.text, "warning")
+            && !has_tag(&doc.text, "note")
+        {
+            out.push(build_diagnostic(
+                doxygen_rule("NRP-DOX-022"),
+                DiagnosticInit {
+                    span: node_to_span(name_node, ctx.path.display().to_string(), &ctx.lines),
+                    message: format!(
+                        "Function '{fn_name}' mentions hardware/thread constraints without @warning or @note."
+                    ),
+                    notes: vec![
+                        "Operational constraints should stand out in a dedicated @warning or @note block."
+                            .to_owned(),
+                    ],
+                    help: Some(
+                        "Move the constraint into an explicit @warning or @note section."
+                            .to_owned(),
+                    ),
+                    related_spans: Vec::new(),
+                },
+            ));
+        }
     }
+}
+
+fn has_incomplete_return_docs(declaration: tree_sitter::Node<'_>, doc: &str, raw: &str) -> bool {
+    if !has_tag(doc, "return") || has_tag(doc, "retval") || returns_void(declaration, raw) {
+        return false;
+    }
+
+    let return_type = return_type_text(declaration, raw)
+        .unwrap_or_default()
+        .trim()
+        .to_ascii_lowercase();
+
+    return_type == "int"
+        || return_type.contains("error")
+        || return_type.contains("status")
+        || return_type.contains("result")
+}
+
+fn has_constraint_language(doc: &str) -> bool {
+    let lower = doc.to_ascii_lowercase();
+    let constraint_markers = [
+        "isr",
+        "interrupt",
+        "thread",
+        "cc310",
+        "cc312",
+        "esp32",
+        "trustzone",
+        "dma",
+        "do not call",
+        "must not call",
+        "only on",
+    ];
+
+    has_tag(doc, "details")
+        && constraint_markers
+            .iter()
+            .any(|marker| lower.contains(marker))
 }

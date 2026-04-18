@@ -214,3 +214,8 @@ pub(super) fn returns_void(node: Node<'_>, raw: &str) -> bool {
         .and_then(|type_node| node_text(type_node, raw))
         .is_some_and(|text| text.trim() == "void")
 }
+
+pub(super) fn return_type_text<'a>(node: Node<'_>, raw: &'a str) -> Option<&'a str> {
+    node.child_by_field_name("type")
+        .and_then(|type_node| node_text(type_node, raw))
+}

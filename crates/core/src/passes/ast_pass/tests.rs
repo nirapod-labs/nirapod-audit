@@ -104,6 +104,36 @@ fn function_doc_gaps_are_reported() {
 }
 
 #[test]
+fn incomplete_return_docs_are_reported() {
+    let diagnostics = run_temp_fixture(
+        "incomplete-return.h",
+        "/**\n * @file incomplete-return.h\n * @brief Packet parser declarations.\n *\n * @details\n * Declares public parsing helpers for framed packets.\n *\n * @author Nirapod Team\n * @date 2026\n * @version 0.1.0\n *\n * @ingroup CryptoDrivers\n *\n * SPDX-License-Identifier: APACHE-2.0\n * SPDX-FileCopyrightText: 2026 Nirapod Contributors\n */\n#pragma once\n\n/**\n * @brief Parses one framed packet.\n * @details\n * Returns zero on success or a negative error code.\n * @param[in] data  Input bytes.\n * @param[in] len   Byte length.\n * @return Status code for the parse attempt.\n * @pre `data` is non-null.\n * @see decode_frame()\n */\nint parse_packet(const uint8_t *data, size_t len);\n",
+    );
+
+    let ids = diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.rule.id.as_str())
+        .collect::<Vec<_>>();
+
+    assert!(ids.contains(&"NRP-DOX-016"));
+}
+
+#[test]
+fn constraint_without_warning_or_note_is_reported() {
+    let diagnostics = run_temp_fixture(
+        "constraint-doc.h",
+        "/**\n * @file constraint-doc.h\n * @brief Crypto backend declarations.\n *\n * @details\n * Declares public helpers for the DMA-backed crypto path.\n *\n * @author Nirapod Team\n * @date 2026\n * @version 0.1.0\n *\n * @ingroup CryptoDrivers\n *\n * SPDX-License-Identifier: APACHE-2.0\n * SPDX-FileCopyrightText: 2026 Nirapod Contributors\n */\n#pragma once\n\n/**\n * @brief Encrypts one packet.\n * @details\n * Uses the CC310 backend and must not be called from ISR context.\n * @param[in] data  Input bytes.\n * @param[in] len   Byte length.\n * @return Zero on success.\n * @retval 0  Encryption completed.\n * @pre `data` is non-null.\n * @see decrypt_packet()\n */\nint encrypt_packet(const uint8_t *data, size_t len);\n",
+    );
+
+    let ids = diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.rule.id.as_str())
+        .collect::<Vec<_>>();
+
+    assert!(ids.contains(&"NRP-DOX-022"));
+}
+
+#[test]
 fn module_doc_without_defgroup_is_reported() {
     let diagnostics = run_temp_fixture(
         "module-doc.h",
