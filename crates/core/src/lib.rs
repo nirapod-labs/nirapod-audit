@@ -85,10 +85,10 @@ pub use parser::{
     build_parser, count_function_items, detect_language, parse_source, query_text, ParserError,
     QueryText, SourceLanguage,
 };
-pub use passes::LexPass;
+pub use passes::{AstPass, LexPass};
 pub use pipeline::pass::Pass;
 pub use pipeline::{discover_audit_target, AuditTarget, DiscoverAuditTargetError};
-pub use rules::{find_rule, ALL_RULES, LICENSE_RULES};
+pub use rules::{find_rule, ALL_RULES, DOXYGEN_RULES, LICENSE_RULES};
 pub use types::{
     AuditConfig, AuditEvent, AuditSummary, Diagnostic, DocSystem, FileResult, FileRole,
     PlatformHint, RelatedSpan, Rule, RuleCategory, RuleOverride, RuleOverrideSeverity,

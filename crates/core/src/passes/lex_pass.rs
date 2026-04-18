@@ -11,7 +11,6 @@ use crate::{
     build_diagnostic, find_rule, line_span, Diagnostic, DiagnosticInit, FileContext, FileRole,
     Pass, SourceLanguage,
 };
-
 const C_CPP_LANGUAGES: &[SourceLanguage] = &[SourceLanguage::C, SourceLanguage::Cpp];
 
 /// Pass 1: lexical checks on raw text and source lines.

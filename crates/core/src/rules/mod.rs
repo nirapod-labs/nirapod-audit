@@ -8,17 +8,24 @@
 //! families will be added in later commits instead of dumping the whole catalog
 //! into one change.
 
+pub mod doxygen;
 pub mod license;
 pub mod refs;
 
 use crate::Rule;
 use std::sync::LazyLock;
 
+pub use doxygen::DOXYGEN_RULES;
 pub use license::LICENSE_RULES;
 
 /// Every rule currently defined in the Rust migration.
-pub static ALL_RULES: LazyLock<Vec<Rule>> =
-    LazyLock::new(|| LICENSE_RULES.iter().cloned().collect());
+pub static ALL_RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
+    LICENSE_RULES
+        .iter()
+        .chain(DOXYGEN_RULES.iter())
+        .cloned()
+        .collect()
+});
 
 /// Looks up a rule by its stable ID string.
 ///
@@ -41,12 +48,18 @@ mod tests {
 
     #[test]
     fn collects_all_rules() {
-        assert_eq!(ALL_RULES.len(), 4);
+        assert_eq!(ALL_RULES.len(), 9);
     }
 
     #[test]
     fn finds_rule_by_id() {
         let rule = find_rule("NRP-LIC-003").expect("expected license rule");
         assert_eq!(rule.title, "header-not-first");
+    }
+
+    #[test]
+    fn finds_doxygen_rule_by_id() {
+        let rule = find_rule("NRP-DOX-002").expect("expected doxygen rule");
+        assert_eq!(rule.title, "missing-file-brief");
     }
 }

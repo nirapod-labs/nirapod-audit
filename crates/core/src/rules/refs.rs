@@ -17,6 +17,12 @@ pub const LICENSE_HEADERS_TS: &str = concat!(
     "/license-and-headers-ts-rust.md"
 );
 
+/// Full Doxygen reference used by the embedded engineering skill.
+pub const DOXYGEN_FULL: &str = concat!(
+    ".agents/skills/nirapod-embedded-engineering/references",
+    "/doxygen-full.md"
+);
+
 /// Embedded engineering skill main instructions.
 pub const EMBEDDED_SKILL: &str = ".agents/skills/nirapod-embedded-engineering/SKILL.md";
 
