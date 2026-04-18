@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: APACHE-2.0
 // SPDX-FileCopyrightText: 2026 Nirapod Contributors
 
-//! Static rule descriptors for the first `DOXYGEN` migration slice.
+//! Static rule descriptors for the current `DOXYGEN` migration slice.
 //!
-//! This file intentionally starts with the file-header rules only. The rest of
-//! the Doxygen catalog will land in later phase-aligned commits instead of one
-//! oversized registry dump.
+//! This registry grows in phase-aligned chunks. The current slice covers
+//! file-header checks plus the first public struct and function documentation
+//! rules.
 
 use crate::{Rule, RuleCategory, Severity, SourceLanguage};
 use std::sync::LazyLock;
 
 use super::refs::{local_ref, DOXYGEN_FULL};
 
-/// All file-header Doxygen rules currently defined in the Rust registry.
+/// All Doxygen rules currently defined in the Rust registry.
 pub static DOXYGEN_RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
     vec![
         Rule {
@@ -111,6 +111,120 @@ pub static DOXYGEN_RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
             )],
             languages: Some(vec![SourceLanguage::C, SourceLanguage::Cpp]),
         },
+        Rule {
+            id: "NRP-DOX-008".to_owned(),
+            category: RuleCategory::Doxygen,
+            severity: Severity::Error,
+            title: "missing-struct-doc".to_owned(),
+            description: "Struct in .h has no @struct block.".to_owned(),
+            rationale: concat!(
+                "Wire-format structs and configuration records need explicit ",
+                "documentation so field meaning, units, and protocol shape stay ",
+                "visible without reading every caller."
+            )
+            .to_owned(),
+            references: vec![local_ref(
+                "Struct Documentation",
+                DOXYGEN_FULL,
+                Some("Part 3 - Struct Documentation"),
+            )],
+            languages: Some(vec![SourceLanguage::C, SourceLanguage::Cpp]),
+        },
+        Rule {
+            id: "NRP-DOX-009".to_owned(),
+            category: RuleCategory::Doxygen,
+            severity: Severity::Error,
+            title: "struct-field-undoc".to_owned(),
+            description: "Struct field has no ///< inline documentation.".to_owned(),
+            rationale: concat!(
+                "Every public struct field should explain units, valid values, or ",
+                "protocol semantics. Inline field docs keep that meaning attached ",
+                "to the declaration engineers actually read."
+            )
+            .to_owned(),
+            references: vec![local_ref(
+                "Struct Field Docs",
+                DOXYGEN_FULL,
+                Some("Part 3 - Struct Documentation"),
+            )],
+            languages: Some(vec![SourceLanguage::C, SourceLanguage::Cpp]),
+        },
+        Rule {
+            id: "NRP-DOX-012".to_owned(),
+            category: RuleCategory::Doxygen,
+            severity: Severity::Error,
+            title: "missing-fn-doc".to_owned(),
+            description: "Public function in .h has no Doxygen block.".to_owned(),
+            rationale: concat!(
+                "Public API functions that lack documentation are invisible in the ",
+                "generated reference and force readers back into implementation code ",
+                "to recover basic contract information."
+            )
+            .to_owned(),
+            references: vec![local_ref(
+                "Function Documentation",
+                DOXYGEN_FULL,
+                Some("Part 5 - Function Documentation"),
+            )],
+            languages: Some(vec![SourceLanguage::C, SourceLanguage::Cpp]),
+        },
+        Rule {
+            id: "NRP-DOX-013".to_owned(),
+            category: RuleCategory::Doxygen,
+            severity: Severity::Error,
+            title: "missing-fn-brief".to_owned(),
+            description: "Function block has no @brief.".to_owned(),
+            rationale: concat!(
+                "The @brief line is the minimum summary required for API browsing. ",
+                "Without it, even documented functions still read as incomplete in ",
+                "generated output."
+            )
+            .to_owned(),
+            references: vec![local_ref(
+                "Function @brief",
+                DOXYGEN_FULL,
+                Some("Part 5 - Function Documentation"),
+            )],
+            languages: Some(vec![SourceLanguage::C, SourceLanguage::Cpp]),
+        },
+        Rule {
+            id: "NRP-DOX-014".to_owned(),
+            category: RuleCategory::Doxygen,
+            severity: Severity::Error,
+            title: "missing-fn-param".to_owned(),
+            description: "@param missing for one or more function parameters.".to_owned(),
+            rationale: concat!(
+                "Every parameter needs documented direction and meaning. Missing ",
+                "@param entries turn otherwise valid APIs into guesswork for call ",
+                "sites and reviewers."
+            )
+            .to_owned(),
+            references: vec![local_ref(
+                "Function @param",
+                DOXYGEN_FULL,
+                Some("Part 5 - Function Documentation"),
+            )],
+            languages: Some(vec![SourceLanguage::C, SourceLanguage::Cpp]),
+        },
+        Rule {
+            id: "NRP-DOX-015".to_owned(),
+            category: RuleCategory::Doxygen,
+            severity: Severity::Error,
+            title: "missing-fn-return".to_owned(),
+            description: "@return missing on non-void function.".to_owned(),
+            rationale: concat!(
+                "Non-void APIs must state what success and failure values mean. ",
+                "Without return documentation, callers silently guess at error ",
+                "semantics and propagate misuse."
+            )
+            .to_owned(),
+            references: vec![local_ref(
+                "Function @return",
+                DOXYGEN_FULL,
+                Some("Part 5 - Function Documentation"),
+            )],
+            languages: Some(vec![SourceLanguage::C, SourceLanguage::Cpp]),
+        },
     ]
 });
 
@@ -120,9 +234,10 @@ mod tests {
     use crate::{RuleCategory, Severity};
 
     #[test]
-    fn exposes_file_header_doxygen_rules() {
-        assert_eq!(DOXYGEN_RULES.len(), 5);
+    fn exposes_current_doxygen_rules() {
+        assert_eq!(DOXYGEN_RULES.len(), 11);
         assert_eq!(DOXYGEN_RULES[0].category, RuleCategory::Doxygen);
         assert_eq!(DOXYGEN_RULES[2].severity, Severity::Warning);
+        assert_eq!(DOXYGEN_RULES[10].severity, Severity::Error);
     }
 }

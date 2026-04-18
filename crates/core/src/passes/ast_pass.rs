@@ -8,9 +8,10 @@
 //! Phase 2 commits once the pass shape is stable.
 
 use crate::{
-    build_diagnostic, find_rule, line_span, Diagnostic, DiagnosticInit, FileContext, FileRole,
-    Pass, SourceLanguage,
+    build_diagnostic, find_rule, line_span, node_to_span, Diagnostic, DiagnosticInit, FileContext,
+    FileRole, Pass, SourceLanguage,
 };
+use tree_sitter::Node;
 
 const C_CPP_LANGUAGES: &[SourceLanguage] = &[SourceLanguage::C, SourceLanguage::Cpp];
 const GENERIC_BRIEFS: &[&str] = &[
@@ -65,6 +66,10 @@ impl Pass for AstPass {
 
         let mut diagnostics = Vec::new();
         self.check_file_header(ctx, &mut diagnostics);
+        if matches!(ctx.role, FileRole::PublicHeader | FileRole::ModuleDoc) {
+            self.check_structs(ctx, &mut diagnostics);
+            self.check_function_declarations(ctx, &mut diagnostics);
+        }
         diagnostics
     }
 }
@@ -213,12 +218,210 @@ impl AstPass {
             ));
         }
     }
+
+    fn check_structs(&self, ctx: &FileContext, out: &mut Vec<Diagnostic>) {
+        let mut structs = Vec::new();
+        collect_nodes_by_kind(ctx.tree.root_node(), "struct_specifier", &mut structs);
+
+        for struct_node in structs {
+            let Some(name_node) = struct_node.child_by_field_name("name") else {
+                continue;
+            };
+            let struct_name = node_text(name_node, &ctx.raw).unwrap_or("struct");
+
+            if doc_comment_before(struct_node, &ctx.lines).is_none() {
+                out.push(build_diagnostic(
+                    doxygen_rule("NRP-DOX-008"),
+                    DiagnosticInit {
+                        span: node_to_span(name_node, ctx.path.display().to_string(), &ctx.lines),
+                        message: format!("Struct '{struct_name}' has no Doxygen block."),
+                        notes: vec![
+                            "Public structs in headers need a @struct block before the declaration."
+                                .to_owned(),
+                        ],
+                        help: Some(
+                            format!(
+                                "Add a /** @struct {struct_name}\n * @brief ... */ block before the struct."
+                            ),
+                        ),
+                        related_spans: Vec::new(),
+                    },
+                ));
+            }
+
+            let mut fields = Vec::new();
+            collect_nodes_by_kind(struct_node, "field_declaration", &mut fields);
+            for field in fields {
+                let field_line = field.end_position().row;
+                let inline_line = ctx.lines.get(field_line).map_or("", String::as_str);
+                let next_line = ctx.lines.get(field_line + 1).map_or("", String::as_str);
+                let has_inline_doc =
+                    inline_line.contains("///<") || next_line.trim_start().starts_with("///<");
+
+                if !has_inline_doc {
+                    let field_name = first_identifier_text(field, &ctx.raw).unwrap_or("unnamed");
+                    out.push(build_diagnostic(
+                        doxygen_rule("NRP-DOX-009"),
+                        DiagnosticInit {
+                            span: node_to_span(field, ctx.path.display().to_string(), &ctx.lines),
+                            message: format!(
+                                "Struct field '{field_name}' has no ///< inline documentation."
+                            ),
+                            notes: vec![
+                                "Public struct fields should document units, ranges, or wire semantics."
+                                    .to_owned(),
+                            ],
+                            help: Some(
+                                "Add a ///< comment after the field declaration.".to_owned(),
+                            ),
+                            related_spans: Vec::new(),
+                        },
+                    ));
+                }
+            }
+        }
+    }
+
+    fn check_function_declarations(&self, ctx: &FileContext, out: &mut Vec<Diagnostic>) {
+        let mut declarations = Vec::new();
+        collect_nodes_by_kind(ctx.tree.root_node(), "declaration", &mut declarations);
+
+        for declaration in declarations {
+            let Some(function_declarator) =
+                first_descendant_by_kind(declaration, "function_declarator")
+            else {
+                continue;
+            };
+
+            let Some(name_node) = first_identifier_node(function_declarator) else {
+                continue;
+            };
+            let fn_name = node_text(name_node, &ctx.raw).unwrap_or("function");
+
+            let Some(doc) = doc_comment_before(declaration, &ctx.lines) else {
+                out.push(build_diagnostic(
+                    doxygen_rule("NRP-DOX-012"),
+                    DiagnosticInit {
+                        span: node_to_span(name_node, ctx.path.display().to_string(), &ctx.lines),
+                        message: format!("Function '{fn_name}' has no Doxygen block."),
+                        notes: vec![
+                            "Public declarations in headers should have a Doxygen block immediately above them."
+                                .to_owned(),
+                        ],
+                        help: Some(
+                            "Add a /** @brief ...\n * @param ...\n * @return ... */ block."
+                                .to_owned(),
+                        ),
+                        related_spans: Vec::new(),
+                    },
+                ));
+                continue;
+            };
+
+            if !has_tag(&doc.text, "brief") {
+                out.push(build_diagnostic(
+                    doxygen_rule("NRP-DOX-013"),
+                    DiagnosticInit {
+                        span: node_to_span(name_node, ctx.path.display().to_string(), &ctx.lines),
+                        message: format!("Function '{fn_name}' doc block has no @brief."),
+                        notes: vec![
+                            "Every documented function needs a one-line summary.".to_owned()
+                        ],
+                        help: Some(
+                            "Add @brief with a one-sentence description of the function."
+                                .to_owned(),
+                        ),
+                        related_spans: Vec::new(),
+                    },
+                ));
+            }
+
+            let source_params = source_param_names(function_declarator, &ctx.raw);
+            let doc_params = doc_param_names(&doc.text);
+            let missing_params = source_params
+                .into_iter()
+                .filter(|param| !doc_params.iter().any(|documented| documented == param))
+                .collect::<Vec<_>>();
+
+            if !missing_params.is_empty() {
+                out.push(build_diagnostic(
+                    doxygen_rule("NRP-DOX-014"),
+                    DiagnosticInit {
+                        span: node_to_span(name_node, ctx.path.display().to_string(), &ctx.lines),
+                        message: format!(
+                            "Function '{fn_name}' is missing @param for: {}.",
+                            missing_params.join(", ")
+                        ),
+                        notes: vec![
+                            "Every declared parameter should appear in the Doxygen contract."
+                                .to_owned(),
+                        ],
+                        help: Some(format!(
+                            "Add @param entries for {}.",
+                            missing_params.join(", ")
+                        )),
+                        related_spans: Vec::new(),
+                    },
+                ));
+            }
+
+            if !returns_void(declaration, &ctx.raw)
+                && !has_tag(&doc.text, "return")
+                && !has_tag(&doc.text, "retval")
+            {
+                out.push(build_diagnostic(
+                    doxygen_rule("NRP-DOX-015"),
+                    DiagnosticInit {
+                        span: node_to_span(name_node, ctx.path.display().to_string(), &ctx.lines),
+                        message: format!(
+                            "Function '{fn_name}' returns non-void but has no @return."
+                        ),
+                        notes: vec![
+                            "Return-value semantics need to be documented for callers.".to_owned()
+                        ],
+                        help: Some(
+                            "Add @return documenting success values and error codes.".to_owned(),
+                        ),
+                        related_spans: Vec::new(),
+                    },
+                ));
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct DocBlock {
     text: String,
     start_line: usize,
+}
+
+fn doc_comment_before(node: Node<'_>, lines: &[String]) -> Option<DocBlock> {
+    let declaration_line = node.start_position().row;
+    let mut end_line = None;
+
+    for index in (0..declaration_line).rev().take(4) {
+        let trimmed = lines.get(index).map_or("", String::as_str).trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if trimmed.ends_with("*/") {
+            end_line = Some(index);
+        }
+        break;
+    }
+
+    let end_line = end_line?;
+    for start_line in (0..=end_line).rev() {
+        if lines[start_line].contains("/**") {
+            return Some(DocBlock {
+                text: lines[start_line..=end_line].join("\n"),
+                start_line,
+            });
+        }
+    }
+
+    None
 }
 
 fn first_doc_block(lines: &[String]) -> Option<DocBlock> {
@@ -296,6 +499,83 @@ fn doxygen_rule(id: &str) -> &'static crate::Rule {
     find_rule(id).expect("missing doxygen rule in registry")
 }
 
+fn collect_nodes_by_kind<'tree>(node: Node<'tree>, kind: &str, out: &mut Vec<Node<'tree>>) {
+    if node.kind() == kind {
+        out.push(node);
+    }
+
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        collect_nodes_by_kind(child, kind, out);
+    }
+}
+
+fn first_descendant_by_kind<'tree>(node: Node<'tree>, kind: &str) -> Option<Node<'tree>> {
+    if node.kind() == kind {
+        return Some(node);
+    }
+
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if let Some(found) = first_descendant_by_kind(child, kind) {
+            return Some(found);
+        }
+    }
+
+    None
+}
+
+fn first_identifier_node(node: Node<'_>) -> Option<Node<'_>> {
+    first_descendant_by_kind(node, "identifier")
+}
+
+fn first_identifier_text<'a>(node: Node<'a>, raw: &'a str) -> Option<&'a str> {
+    first_identifier_node(node).and_then(|identifier| node_text(identifier, raw))
+}
+
+fn node_text<'a>(node: Node<'_>, raw: &'a str) -> Option<&'a str> {
+    node.utf8_text(raw.as_bytes()).ok()
+}
+
+fn doc_param_names(block: &str) -> Vec<String> {
+    block
+        .lines()
+        .filter_map(|line| {
+            let trimmed = line.trim_start().trim_start_matches('*').trim();
+            let mut parts = trimmed.split_whitespace();
+            let tag = parts.next()?;
+            if !tag.starts_with("@param") {
+                return None;
+            }
+
+            parts.next().map(str::to_owned)
+        })
+        .collect()
+}
+
+fn source_param_names(node: Node<'_>, raw: &str) -> Vec<String> {
+    let mut params = Vec::new();
+    collect_nodes_by_kind(node, "parameter_declaration", &mut params);
+
+    params
+        .into_iter()
+        .filter_map(|param| {
+            let text = node_text(param, raw)?.trim();
+            if text == "void" {
+                return None;
+            }
+
+            first_identifier_text(param, raw).map(str::to_owned)
+        })
+        .collect()
+}
+
+fn returns_void(node: Node<'_>, raw: &str) -> bool {
+    node.child_by_field_name("type")
+        .and_then(|type_node| node_text(type_node, raw))
+        .is_some_and(|text| text.trim() == "void")
+}
+
 #[cfg(test)]
 mod tests {
     use super::AstPass;
@@ -333,8 +613,15 @@ mod tests {
         let context = build_file_context(&path, &raw, &project).expect("failed to build context");
 
         let diagnostics = AstPass.run(&context);
-        assert_eq!(diagnostics.len(), 1);
-        assert_eq!(diagnostics[0].rule.id, "NRP-DOX-001");
+        let ids = diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.rule.id.as_str())
+            .collect::<Vec<_>>();
+
+        assert!(ids.contains(&"NRP-DOX-001"));
+        assert!(ids.contains(&"NRP-DOX-008"));
+        assert!(ids.contains(&"NRP-DOX-009"));
+        assert!(ids.contains(&"NRP-DOX-012"));
     }
 
     #[test]
@@ -372,6 +659,23 @@ mod tests {
 
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].rule.id, "NRP-DOX-002");
+    }
+
+    #[test]
+    fn function_doc_gaps_are_reported() {
+        let diagnostics = run_temp_fixture(
+            "missing-fn-tags.h",
+            "/**\n * @file missing-fn-tags.h\n * @brief Packet authentication helpers.\n *\n * @details\n * Declares the public parser entry points.\n *\n * @author Nirapod Team\n * @date 2026\n * @version 0.1.0\n *\n * SPDX-License-Identifier: APACHE-2.0\n * SPDX-FileCopyrightText: 2026 Nirapod Contributors\n */\n#pragma once\n\n/**\n * @details\n * Parses one framed packet.\n */\nint parse_packet(const uint8_t *data, size_t len);\n",
+        );
+
+        let ids = diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.rule.id.as_str())
+            .collect::<Vec<_>>();
+
+        assert!(ids.contains(&"NRP-DOX-013"));
+        assert!(ids.contains(&"NRP-DOX-014"));
+        assert!(ids.contains(&"NRP-DOX-015"));
     }
 
     fn run_temp_fixture(name: &str, raw: &str) -> Vec<crate::Diagnostic> {
