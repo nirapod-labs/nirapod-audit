@@ -68,6 +68,7 @@
 
 pub mod config;
 pub mod context;
+pub mod diagnostic;
 pub mod parser;
 pub mod pipeline;
 pub mod types;
@@ -77,6 +78,7 @@ pub use context::{
     build_file_context, build_project_context, detect_file_role, resolve_platform_hint,
     ContextBuildError, FileContext, ProjectContext,
 };
+pub use diagnostic::{build_diagnostic, line_span, node_to_span, DiagnosticInit};
 pub use parser::{
     build_parser, count_function_items, detect_language, parse_source, query_text, ParserError,
     QueryText, SourceLanguage,
