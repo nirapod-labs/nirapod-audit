@@ -7,63 +7,9 @@
 //! read-only [`FileContext`]. That keeps parser setup centralized and avoids
 //! repeated parse work inside every rule pass.
 
-use crate::{parse_source, AuditConfig, ParserError, PlatformHint, SourceLanguage};
+use crate::{parse_source, AuditConfig, FileRole, ParserError, PlatformHint, SourceLanguage};
 use std::path::{Path, PathBuf};
 use tree_sitter::Tree;
-
-/// Structural role of a source file.
-///
-/// # Examples
-///
-/// ```
-/// use nirapod_audit_core::FileRole;
-///
-/// assert_eq!(FileRole::ModuleDoc.as_str(), "module-doc");
-/// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FileRole {
-    /// Public header file.
-    PublicHeader,
-    /// Implementation file.
-    Implementation,
-    /// Module documentation header such as `module-doc.h`.
-    ModuleDoc,
-    /// Test source file.
-    Test,
-    /// Third-party vendored code.
-    ThirdParty,
-    /// Assembly source file.
-    Asm,
-    /// CMake source file.
-    Cmake,
-    /// Other configuration or metadata file.
-    Config,
-}
-
-impl FileRole {
-    /// Returns the stable lowercase label used in diagnostics.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use nirapod_audit_core::FileRole;
-    ///
-    /// assert_eq!(FileRole::PublicHeader.as_str(), "public-header");
-    /// ```
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::PublicHeader => "public-header",
-            Self::Implementation => "impl",
-            Self::ModuleDoc => "module-doc",
-            Self::Test => "test",
-            Self::ThirdParty => "third-party",
-            Self::Asm => "asm",
-            Self::Cmake => "cmake",
-            Self::Config => "config",
-        }
-    }
-}
 
 /// Shared state built once for an audit target.
 ///

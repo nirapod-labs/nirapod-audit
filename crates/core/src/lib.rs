@@ -75,7 +75,7 @@ pub mod types;
 pub use config::{find_config_file, load_config, LoadedConfig, CONFIG_FILENAME};
 pub use context::{
     build_file_context, build_project_context, detect_file_role, resolve_platform_hint,
-    ContextBuildError, FileContext, FileRole, ProjectContext,
+    ContextBuildError, FileContext, ProjectContext,
 };
 pub use parser::{
     build_parser, count_function_items, detect_language, parse_source, query_text, ParserError,
@@ -83,5 +83,7 @@ pub use parser::{
 };
 pub use pipeline::{discover_audit_target, AuditTarget, DiscoverAuditTargetError};
 pub use types::{
-    AuditConfig, PlatformHint, RuleCategory, RuleOverride, RuleOverrideSeverity, Severity, Span,
+    AuditConfig, AuditEvent, AuditSummary, Diagnostic, DocSystem, FileResult, FileRole,
+    PlatformHint, RelatedSpan, Rule, RuleCategory, RuleOverride, RuleOverrideSeverity,
+    RuleReference, Severity, Span,
 };

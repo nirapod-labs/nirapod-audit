@@ -7,6 +7,7 @@
 //! fixtures cover. Rust and TypeScript detection are already modeled so later
 //! phases can add those grammars without changing the public API again.
 
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use streaming_iterator::StreamingIterator;
 use tree_sitter::{Language, Parser, Query, QueryCursor, Tree};
@@ -20,15 +21,19 @@ use tree_sitter::{Language, Parser, Query, QueryCursor, Tree};
 ///
 /// assert_eq!(SourceLanguage::Cpp.family_label(), "c/c++");
 /// ```
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SourceLanguage {
     /// C source and header files.
+    #[serde(rename = "c")]
     C,
     /// C++ source and header files.
+    #[serde(rename = "cpp")]
     Cpp,
     /// Rust source files.
+    #[serde(rename = "rust")]
     Rust,
     /// TypeScript source files.
+    #[serde(rename = "typescript")]
     TypeScript,
 }
 
