@@ -99,6 +99,8 @@ fn function_doc_gaps_are_reported() {
     assert!(ids.contains(&"NRP-DOX-013"));
     assert!(ids.contains(&"NRP-DOX-014"));
     assert!(ids.contains(&"NRP-DOX-015"));
+    assert!(ids.contains(&"NRP-DOX-017"));
+    assert!(ids.contains(&"NRP-DOX-018"));
 }
 
 #[test]

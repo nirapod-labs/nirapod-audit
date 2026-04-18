@@ -32,7 +32,7 @@ mod tests {
 
     #[test]
     fn exposes_current_doxygen_rules() {
-        assert_eq!(DOXYGEN_RULES.len(), 16);
+        assert_eq!(DOXYGEN_RULES.len(), 18);
         assert_eq!(DOXYGEN_RULES[0].category, RuleCategory::Doxygen);
         assert_eq!(DOXYGEN_RULES[2].severity, Severity::Warning);
         let module_doc_rule = DOXYGEN_RULES
@@ -40,5 +40,10 @@ mod tests {
             .find(|rule| rule.id == "NRP-DOX-021")
             .expect("missing module-doc rule");
         assert_eq!(module_doc_rule.severity, Severity::Warning);
+        let see_rule = DOXYGEN_RULES
+            .iter()
+            .find(|rule| rule.id == "NRP-DOX-018")
+            .expect("missing function see rule");
+        assert_eq!(see_rule.severity, Severity::Info);
     }
 }

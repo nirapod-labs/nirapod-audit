@@ -198,5 +198,42 @@ pub static DECLARATION_RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
             )],
             languages: Some(vec![SourceLanguage::C, SourceLanguage::Cpp]),
         },
+        Rule {
+            id: "NRP-DOX-017".to_owned(),
+            category: RuleCategory::Doxygen,
+            severity: Severity::Warning,
+            title: "missing-fn-pre-post".to_owned(),
+            description: "Public API function missing @pre or @post.".to_owned(),
+            rationale: concat!(
+                "Function contracts belong in the docs, not just in caller folklore. ",
+                "@pre and @post tell readers what must be true before the call and ",
+                "what the API guarantees afterward."
+            )
+            .to_owned(),
+            references: vec![local_ref(
+                "Function Contracts",
+                DOXYGEN_FULL,
+                Some("Part 5 - Function Documentation"),
+            )],
+            languages: Some(vec![SourceLanguage::C, SourceLanguage::Cpp]),
+        },
+        Rule {
+            id: "NRP-DOX-018".to_owned(),
+            category: RuleCategory::Doxygen,
+            severity: Severity::Info,
+            title: "missing-fn-see".to_owned(),
+            description: "Function block missing any @see cross-reference.".to_owned(),
+            rationale: concat!(
+                "@see links help engineers navigate related APIs and nearby concepts. ",
+                "Without them, the docs become a flat list instead of a usable reference."
+            )
+            .to_owned(),
+            references: vec![local_ref(
+                "Function @see",
+                DOXYGEN_FULL,
+                Some("Part 5 - Function Documentation"),
+            )],
+            languages: Some(vec![SourceLanguage::C, SourceLanguage::Cpp]),
+        },
     ]
 });

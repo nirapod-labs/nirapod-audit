@@ -168,5 +168,40 @@ pub(super) fn check_function_declarations(ctx: &FileContext, out: &mut Vec<Diagn
                 },
             ));
         }
+
+        if !has_tag(&doc.text, "pre") && !has_tag(&doc.text, "post") {
+            out.push(build_diagnostic(
+                doxygen_rule("NRP-DOX-017"),
+                DiagnosticInit {
+                    span: node_to_span(name_node, ctx.path.display().to_string(), &ctx.lines),
+                    message: format!(
+                        "Function '{fn_name}' is missing @pre/@post contract documentation."
+                    ),
+                    notes: vec![
+                        "Public APIs should document preconditions or postconditions.".to_owned(),
+                    ],
+                    help: Some(
+                        "Add @pre and/or @post to describe the function contract.".to_owned(),
+                    ),
+                    related_spans: Vec::new(),
+                },
+            ));
+        }
+
+        if !has_tag(&doc.text, "see") {
+            out.push(build_diagnostic(
+                doxygen_rule("NRP-DOX-018"),
+                DiagnosticInit {
+                    span: node_to_span(name_node, ctx.path.display().to_string(), &ctx.lines),
+                    message: format!("Function '{fn_name}' has no @see cross-reference."),
+                    notes: vec!["Cross-references help readers navigate related APIs.".to_owned()],
+                    help: Some(
+                        "Add @see with related functions, types, or external references."
+                            .to_owned(),
+                    ),
+                    related_spans: Vec::new(),
+                },
+            ));
+        }
     }
 }
