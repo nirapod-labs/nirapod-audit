@@ -70,6 +70,7 @@ pub mod config;
 pub mod context;
 pub mod diagnostic;
 pub mod parser;
+pub mod passes;
 pub mod pipeline;
 pub mod rules;
 pub mod types;
@@ -84,6 +85,8 @@ pub use parser::{
     build_parser, count_function_items, detect_language, parse_source, query_text, ParserError,
     QueryText, SourceLanguage,
 };
+pub use passes::LexPass;
+pub use pipeline::pass::Pass;
 pub use pipeline::{discover_audit_target, AuditTarget, DiscoverAuditTargetError};
 pub use rules::{find_rule, ALL_RULES, LICENSE_RULES};
 pub use types::{

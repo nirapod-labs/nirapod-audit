@@ -7,6 +7,8 @@
 //! normalize a target path, apply ignore patterns, and return the stable file
 //! list that later phases will analyze.
 
+pub mod pass;
+
 use globset::{Glob, GlobSet, GlobSetBuilder};
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
