@@ -23,8 +23,27 @@ pub const DOXYGEN_FULL: &str = concat!(
     "/doxygen-full.md"
 );
 
+/// Embedded-engineering writing style reference.
+pub const WRITE_LIKE_HUMAN: &str = concat!(
+    ".agents/skills/nirapod-embedded-engineering/references",
+    "/write-like-human-tech.md"
+);
+
 /// Embedded engineering skill main instructions.
 pub const EMBEDDED_SKILL: &str = ".agents/skills/nirapod-embedded-engineering/SKILL.md";
+
+/// Write-documented-code skill main instructions.
+pub const DOC_SKILL: &str = ".agents/skills/write-documented-code/SKILL.md";
+
+/// Write-like-human skill main instructions.
+pub const WLH_SKILL: &str = ".agents/skills/write-like-human/SKILL.md";
+
+/// AI word tier reference for banned-word rules.
+pub const WORD_TIERS: &str = ".agents/skills/write-like-human/references/word-tiers.md";
+
+/// AI phrase-pattern reference for lexical style checks.
+pub const AI_PATTERNS_DB: &str =
+    ".agents/skills/write-like-human/references/ai-patterns-database.md";
 
 /// Builds a structured local file reference.
 ///

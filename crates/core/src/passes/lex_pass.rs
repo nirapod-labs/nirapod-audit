@@ -11,7 +11,62 @@ use crate::{
     build_diagnostic, find_rule, line_span, Diagnostic, DiagnosticInit, FileContext, FileRole,
     Pass, SourceLanguage,
 };
+
 const C_CPP_LANGUAGES: &[SourceLanguage] = &[SourceLanguage::C, SourceLanguage::Cpp];
+const EM_DASH: char = '\u{2014}';
+const BANNED_WORDS: &[(&str, &str)] = &[
+    (
+        "robust",
+        "Say what makes it reliable instead of calling it robust.",
+    ),
+    ("seamless", "Say which failure modes are handled and how."),
+    ("seamlessly", "Say which failure modes are handled and how."),
+    (
+        "leverage",
+        "Use plain language such as use, call, or rely on.",
+    ),
+    ("utilize", "Just say use."),
+    ("delve", "Say look at, read, or examine."),
+    ("multifaceted", "Say what the actual facets are."),
+    ("holistic", "Say which parts are covered."),
+    (
+        "ensure",
+        "Say check or verify instead of implying a guarantee.",
+    ),
+    ("tapestry", "Use plain technical language instead."),
+    ("paradigm", "Use plain technical language instead."),
+    ("testament", "Use plain technical language instead."),
+    ("beacon", "Use plain technical language instead."),
+    ("cornerstone", "Use plain technical language instead."),
+    ("catalyst", "Use plain technical language instead."),
+    ("foster", "Say encourage or build."),
+    ("underscore", "Say show or highlight."),
+    ("showcase", "Say show or demo."),
+    ("harness", "Say use."),
+    ("embark", "Say start."),
+    ("spearhead", "Say lead."),
+    ("pivotal", "Say important or key."),
+    ("groundbreaking", "Say what is actually new."),
+    ("transformative", "Say what it changes exactly."),
+    ("meticulous", "Say careful or detailed."),
+    ("vibrant", "Irrelevant in technical documentation."),
+    ("innovative", "Say new."),
+    ("unprecedented", "Say first or new if it is literally true."),
+    ("ubiquitous", "Say common or widespread."),
+];
+const BANNED_PHRASES: &[&str] = &[
+    "in today's fast-paced",
+    "in today's digital age",
+    "delve into the world of",
+    "pave the way",
+    "at the forefront",
+    "harness the power",
+    "game-changer",
+    "unlock the power",
+    "stay ahead of the curve",
+    "it is important to note that",
+    "it goes without saying",
+];
 
 /// Pass 1: lexical checks on raw text and source lines.
 ///
@@ -44,6 +99,8 @@ impl Pass for LexPass {
         let mut diagnostics = Vec::new();
         self.check_spdx(ctx, &mut diagnostics);
         self.check_header_ordering(ctx, &mut diagnostics);
+        self.check_banned_words(ctx, &mut diagnostics);
+        self.check_em_dash(ctx, &mut diagnostics);
         diagnostics
     }
 }
@@ -153,6 +210,82 @@ impl LexPass {
             }
         }
     }
+
+    fn check_banned_words(&self, ctx: &FileContext, out: &mut Vec<Diagnostic>) {
+        for (index, line) in ctx.lines.iter().enumerate() {
+            if !is_in_doc_comment(&ctx.lines, index) {
+                continue;
+            }
+
+            let lower_line = line.to_ascii_lowercase();
+
+            for (word, help) in BANNED_WORDS {
+                if contains_word(&lower_line, word) {
+                    out.push(build_diagnostic(
+                        style_rule("NRP-STYLE-001"),
+                        DiagnosticInit {
+                            span: line_span(ctx.path.display().to_string(), index + 1, &ctx.lines),
+                            message: format!(
+                                "Banned word \"{word}\" found in documentation comment."
+                            ),
+                            notes: vec![
+                                "These words are strong AI-tell signals in technical writing."
+                                    .to_owned(),
+                            ],
+                            help: Some((*help).to_owned()),
+                            related_spans: Vec::new(),
+                        },
+                    ));
+                }
+            }
+
+            for phrase in BANNED_PHRASES {
+                if lower_line.contains(phrase) {
+                    out.push(build_diagnostic(
+                        style_rule("NRP-STYLE-001"),
+                        DiagnosticInit {
+                            span: line_span(ctx.path.display().to_string(), index + 1, &ctx.lines),
+                            message: format!(
+                                "Banned phrase \"{phrase}\" found in documentation comment."
+                            ),
+                            notes: vec![
+                                "Template marketing phrases are not acceptable in Nirapod docs."
+                                    .to_owned(),
+                            ],
+                            help: Some(
+                                "Rewrite this line in plain, direct technical language.".to_owned(),
+                            ),
+                            related_spans: Vec::new(),
+                        },
+                    ));
+                }
+            }
+        }
+    }
+
+    fn check_em_dash(&self, ctx: &FileContext, out: &mut Vec<Diagnostic>) {
+        for (index, line) in ctx.lines.iter().enumerate() {
+            if is_in_doc_comment(&ctx.lines, index) && line.contains(EM_DASH) {
+                out.push(build_diagnostic(
+                    style_rule("NRP-STYLE-002"),
+                    DiagnosticInit {
+                        span: line_span(ctx.path.display().to_string(), index + 1, &ctx.lines),
+                        message: "Em-dash character (\u{2014}) found in documentation comment."
+                            .to_owned(),
+                        notes: vec![
+                            "Em dashes are forbidden in this codebase's documentation style."
+                                .to_owned(),
+                        ],
+                        help: Some(
+                            "Replace it with a comma, colon, period, or a shorter sentence."
+                                .to_owned(),
+                        ),
+                        related_spans: Vec::new(),
+                    },
+                ));
+            }
+        }
+    }
 }
 
 fn is_in_doc_comment(lines: &[String], line_index: usize) -> bool {
@@ -179,8 +312,24 @@ fn is_include_guard(line: &str) -> bool {
     line.starts_with("#pragma once") || line.starts_with("#ifndef ")
 }
 
+fn contains_word(line: &str, word: &str) -> bool {
+    line.match_indices(word).any(|(index, _)| {
+        let before = line[..index].chars().next_back();
+        let after = line[index + word.len()..].chars().next();
+        !is_word_char(before) && !is_word_char(after)
+    })
+}
+
+fn is_word_char(ch: Option<char>) -> bool {
+    ch.is_some_and(|value| value.is_ascii_alphanumeric() || value == '_')
+}
+
 fn license_rule(id: &str) -> &'static crate::Rule {
     find_rule(id).expect("missing license rule in registry")
+}
+
+fn style_rule(id: &str) -> &'static crate::Rule {
+    find_rule(id).expect("missing style rule in registry")
 }
 
 #[cfg(test)]
@@ -246,6 +395,49 @@ mod tests {
         let diagnostics = LexPass.run(&context);
         assert_eq!(diagnostics.len(), 1);
         assert_eq!(diagnostics[0].rule.id, "NRP-LIC-004");
+
+        fs::remove_dir_all(root).expect("failed to remove temp directory");
+    }
+
+    #[test]
+    fn style_violation_fixture_triggers_banned_word_and_em_dash() {
+        let path = fixture_path("tests/violations/NRP-STYLE-001-banned-words.h");
+        let raw = fs::read_to_string(&path).expect("failed to read style violation fixture");
+        let project = build_project_context(
+            path.parent().expect("fixture without parent"),
+            vec![path.clone()],
+            AuditConfig::default(),
+        );
+        let context = build_file_context(&path, &raw, &project).expect("failed to build context");
+
+        let diagnostics = LexPass.run(&context);
+        let ids = diagnostics
+            .iter()
+            .map(|diagnostic| diagnostic.rule.id.as_str())
+            .collect::<Vec<_>>();
+
+        assert!(ids.contains(&"NRP-STYLE-001"));
+        assert!(ids.contains(&"NRP-STYLE-002"));
+    }
+
+    #[test]
+    fn banned_phrase_triggers_style_warning() {
+        let root = temp_dir("lex-pass-phrase");
+        let file = root.join("phrase.h");
+        fs::create_dir_all(&root).expect("failed to create temp directory");
+        fs::write(
+            &file,
+            "/**\n * @file phrase.h\n * @brief Packet parser.\n *\n * @details\n * It is important to note that this helper validates framed packets.\n *\n * @author Nirapod Team\n * @date 2026\n * @version 0.1.0\n *\n * SPDX-License-Identifier: APACHE-2.0\n * SPDX-FileCopyrightText: 2026 Nirapod Contributors\n */\n#pragma once\n",
+        )
+        .expect("failed to write test fixture");
+
+        let raw = fs::read_to_string(&file).expect("failed to read temp fixture");
+        let project = build_project_context(&root, vec![file.clone()], AuditConfig::default());
+        let context = build_file_context(&file, &raw, &project).expect("failed to build context");
+
+        let diagnostics = LexPass.run(&context);
+        assert_eq!(diagnostics.len(), 1);
+        assert_eq!(diagnostics[0].rule.id, "NRP-STYLE-001");
 
         fs::remove_dir_all(root).expect("failed to remove temp directory");
     }
