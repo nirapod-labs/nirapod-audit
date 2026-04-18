@@ -34,6 +34,8 @@ pub struct ProjectContext {
 
 /// Parsed context for one source file.
 pub struct FileContext {
+    /// Audit target root directory.
+    pub root_dir: PathBuf,
     /// Source path.
     pub path: PathBuf,
     /// Raw source content.
@@ -225,6 +227,7 @@ pub fn build_file_context(
     let tree = parse_source(language, raw)?;
 
     Ok(FileContext {
+        root_dir: project.root_dir.clone(),
         path: path.to_path_buf(),
         raw: raw.to_owned(),
         lines: raw.lines().map(str::to_owned).collect(),
@@ -279,6 +282,10 @@ mod tests {
         let context =
             build_file_context(&fixture, &source, &project).expect("failed to build file context");
 
+        assert_eq!(
+            context.root_dir,
+            fixture.parent().expect("fixture without parent")
+        );
         assert_eq!(context.role, FileRole::PublicHeader);
         assert_eq!(context.platform, PlatformHint::Nrf5340);
         assert_eq!(context.lines.len(), source.lines().count());

@@ -178,6 +178,78 @@ fn plain_cpp_enum_is_reported() {
     assert!(ids.contains(&"NRP-DOX-011"));
 }
 
+#[test]
+fn missing_ingroup_is_reported() {
+    let root = temp_dir("ast-pass-groups");
+    let module_doc = root.join("module-doc.h");
+    let header = root.join("crypto.h");
+    fs::create_dir_all(&root).expect("failed to create temp directory");
+    fs::write(
+        &module_doc,
+        "/**\n * @file module-doc.h\n * @brief Crypto module documentation.\n *\n * @details\n * Declares the root Doxygen group for the crypto subsystem.\n *\n * @author Nirapod Team\n * @date 2026\n * @version 0.1.0\n *\n * @defgroup CryptoDrivers Crypto Drivers\n *\n * SPDX-License-Identifier: APACHE-2.0\n * SPDX-FileCopyrightText: 2026 Nirapod Contributors\n */\n#pragma once\n",
+    )
+    .expect("failed to write module-doc fixture");
+    fs::write(
+        &header,
+        "/**\n * @file crypto.h\n * @brief Crypto helper declarations.\n *\n * @details\n * Declares public wrappers around the authenticated-encryption backend.\n *\n * @author Nirapod Team\n * @date 2026\n * @version 0.1.0\n *\n * SPDX-License-Identifier: APACHE-2.0\n * SPDX-FileCopyrightText: 2026 Nirapod Contributors\n */\n#pragma once\n\nint encrypt_frame(const uint8_t *input, size_t len);\n",
+    )
+    .expect("failed to write header fixture");
+
+    let project = build_project_context(
+        &root,
+        vec![module_doc.clone(), header.clone()],
+        AuditConfig::default(),
+    );
+    let raw = fs::read_to_string(&header).expect("failed to read header fixture");
+    let context = build_file_context(&header, &raw, &project).expect("failed to build context");
+    let diagnostics = AstPass.run(&context);
+
+    let ids = diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.rule.id.as_str())
+        .collect::<Vec<_>>();
+
+    assert!(ids.contains(&"NRP-DOX-019"));
+
+    fs::remove_dir_all(root).expect("failed to remove temp directory");
+}
+
+#[test]
+fn undefined_ingroup_is_reported() {
+    let root = temp_dir("ast-pass-groups-undefined");
+    let module_doc = root.join("module-doc.h");
+    let header = root.join("crypto.h");
+    fs::create_dir_all(&root).expect("failed to create temp directory");
+    fs::write(
+        &module_doc,
+        "/**\n * @file module-doc.h\n * @brief Crypto module documentation.\n *\n * @details\n * Declares the root Doxygen group for the crypto subsystem.\n *\n * @author Nirapod Team\n * @date 2026\n * @version 0.1.0\n *\n * @defgroup CryptoDrivers Crypto Drivers\n *\n * SPDX-License-Identifier: APACHE-2.0\n * SPDX-FileCopyrightText: 2026 Nirapod Contributors\n */\n#pragma once\n",
+    )
+    .expect("failed to write module-doc fixture");
+    fs::write(
+        &header,
+        "/**\n * @file crypto.h\n * @brief Crypto helper declarations.\n *\n * @details\n * Declares public wrappers around the authenticated-encryption backend.\n *\n * @author Nirapod Team\n * @date 2026\n * @version 0.1.0\n *\n * @ingroup MissingGroup\n *\n * SPDX-License-Identifier: APACHE-2.0\n * SPDX-FileCopyrightText: 2026 Nirapod Contributors\n */\n#pragma once\n\nint encrypt_frame(const uint8_t *input, size_t len);\n",
+    )
+    .expect("failed to write header fixture");
+
+    let project = build_project_context(
+        &root,
+        vec![module_doc.clone(), header.clone()],
+        AuditConfig::default(),
+    );
+    let raw = fs::read_to_string(&header).expect("failed to read header fixture");
+    let context = build_file_context(&header, &raw, &project).expect("failed to build context");
+    let diagnostics = AstPass.run(&context);
+
+    let ids = diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.rule.id.as_str())
+        .collect::<Vec<_>>();
+
+    assert!(ids.contains(&"NRP-DOX-020"));
+
+    fs::remove_dir_all(root).expect("failed to remove temp directory");
+}
+
 fn run_temp_fixture(name: &str, raw: &str) -> Vec<crate::Diagnostic> {
     let root = temp_dir("ast-pass");
     let file = root.join(name);

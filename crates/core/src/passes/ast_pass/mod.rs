@@ -10,6 +10,7 @@
 
 mod declarations;
 mod file_header;
+mod grouping;
 mod helpers;
 #[cfg(test)]
 mod tests;
@@ -53,6 +54,9 @@ impl Pass for AstPass {
         let mut diagnostics = Vec::new();
         file_header::check_file_header(ctx, &mut diagnostics);
         file_header::check_module_doc(ctx, &mut diagnostics);
+        if matches!(ctx.role, FileRole::PublicHeader) {
+            grouping::check_ingroups(ctx, &mut diagnostics);
+        }
         if matches!(ctx.role, FileRole::PublicHeader | FileRole::ModuleDoc) {
             types::check_classes(ctx, &mut diagnostics);
             declarations::check_structs(ctx, &mut diagnostics);
