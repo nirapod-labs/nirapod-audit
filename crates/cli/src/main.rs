@@ -12,9 +12,10 @@
 #![warn(rustdoc::broken_intra_doc_links)]
 #![deny(unsafe_code)]
 
+mod commands;
+
 use anyhow::Result;
 use clap::{Parser, Subcommand};
-use nirapod_audit_core::{discover_audit_target, load_config};
 use std::path::PathBuf;
 
 /// Rust CLI for the `nirapod-audit` migration.
@@ -70,29 +71,8 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Command::Audit { path } => {
-            let loaded = load_config(&path)?;
-            let target = discover_audit_target(&path, &loaded.config.ignore_paths)?;
-            let config_source = loaded
-                .config_path
-                .as_ref()
-                .map(|path| path.display().to_string())
-                .unwrap_or_else(|| String::from("defaults"));
-
-            println!(
-                "prepared audit target {} with {} files using {}",
-                target.root_dir.display(),
-                target.files.len(),
-                config_source
-            );
-        }
-        Command::Rules => {
-            println!("rules command scaffolded");
-        }
-        Command::Explain { id } => {
-            println!("explain command scaffolded for {id}");
-        }
+        Command::Audit { path } => commands::audit::run(&path),
+        Command::Rules => commands::rules::run(),
+        Command::Explain { id } => commands::explain::run(&id),
     }
-
-    Ok(())
 }
