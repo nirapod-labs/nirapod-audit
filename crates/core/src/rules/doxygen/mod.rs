@@ -32,7 +32,7 @@ mod tests {
 
     #[test]
     fn exposes_current_doxygen_rules() {
-        assert_eq!(DOXYGEN_RULES.len(), 12);
+        assert_eq!(DOXYGEN_RULES.len(), 16);
         assert_eq!(DOXYGEN_RULES[0].category, RuleCategory::Doxygen);
         assert_eq!(DOXYGEN_RULES[2].severity, Severity::Warning);
         let module_doc_rule = DOXYGEN_RULES

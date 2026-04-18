@@ -51,7 +51,7 @@ mod tests {
 
     #[test]
     fn collects_all_rules() {
-        assert_eq!(ALL_RULES.len(), 18);
+        assert_eq!(ALL_RULES.len(), 22);
     }
 
     #[test]

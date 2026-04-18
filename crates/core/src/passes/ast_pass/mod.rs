@@ -13,6 +13,7 @@ mod file_header;
 mod helpers;
 #[cfg(test)]
 mod tests;
+mod types;
 
 use crate::{Diagnostic, FileContext, FileRole, Pass, SourceLanguage};
 
@@ -53,7 +54,9 @@ impl Pass for AstPass {
         file_header::check_file_header(ctx, &mut diagnostics);
         file_header::check_module_doc(ctx, &mut diagnostics);
         if matches!(ctx.role, FileRole::PublicHeader | FileRole::ModuleDoc) {
+            types::check_classes(ctx, &mut diagnostics);
             declarations::check_structs(ctx, &mut diagnostics);
+            types::check_enums(ctx, &mut diagnostics);
             declarations::check_function_declarations(ctx, &mut diagnostics);
         }
         diagnostics
