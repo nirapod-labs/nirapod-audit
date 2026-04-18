@@ -4,7 +4,7 @@
 //! File-level Doxygen header checks.
 
 use super::helpers::{doxygen_rule, first_doc_block, has_tag, is_generic_brief, tag_content};
-use crate::{build_diagnostic, line_span, Diagnostic, DiagnosticInit, FileContext};
+use crate::{build_diagnostic, line_span, Diagnostic, DiagnosticInit, FileContext, FileRole};
 
 pub(super) fn check_file_header(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
     let Some(header) = first_doc_block(&ctx.lines) else {
@@ -144,4 +144,21 @@ pub(super) fn check_file_header(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
             },
         ));
     }
+}
+
+pub(super) fn check_module_doc(ctx: &FileContext, out: &mut Vec<Diagnostic>) {
+    if ctx.role != FileRole::ModuleDoc || ctx.raw.contains("@defgroup") {
+        return;
+    }
+
+    out.push(build_diagnostic(
+        doxygen_rule("NRP-DOX-021"),
+        DiagnosticInit {
+            span: line_span(ctx.path.display().to_string(), 1, &ctx.lines),
+            message: "module-doc.h file has no @defgroup.".to_owned(),
+            notes: vec!["module-doc.h exists specifically to declare a Doxygen group.".to_owned()],
+            help: Some("Add a /** @defgroup GroupName Group Title\n * @{ */ block.".to_owned()),
+            related_spans: Vec::new(),
+        },
+    ));
 }

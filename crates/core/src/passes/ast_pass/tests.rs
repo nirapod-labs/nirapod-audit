@@ -101,6 +101,21 @@ fn function_doc_gaps_are_reported() {
     assert!(ids.contains(&"NRP-DOX-015"));
 }
 
+#[test]
+fn module_doc_without_defgroup_is_reported() {
+    let diagnostics = run_temp_fixture(
+        "module-doc.h",
+        "/**\n * @file module-doc.h\n * @brief Crypto module documentation.\n *\n * @details\n * Collects the public API pages for the crypto subsystem.\n *\n * @author Nirapod Team\n * @date 2026\n * @version 0.1.0\n *\n * SPDX-License-Identifier: APACHE-2.0\n * SPDX-FileCopyrightText: 2026 Nirapod Contributors\n */\n#pragma once\n",
+    );
+
+    let ids = diagnostics
+        .iter()
+        .map(|diagnostic| diagnostic.rule.id.as_str())
+        .collect::<Vec<_>>();
+
+    assert!(ids.contains(&"NRP-DOX-021"));
+}
+
 fn run_temp_fixture(name: &str, raw: &str) -> Vec<crate::Diagnostic> {
     let root = temp_dir("ast-pass");
     let file = root.join(name);

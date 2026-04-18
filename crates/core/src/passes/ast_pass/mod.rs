@@ -51,6 +51,7 @@ impl Pass for AstPass {
 
         let mut diagnostics = Vec::new();
         file_header::check_file_header(ctx, &mut diagnostics);
+        file_header::check_module_doc(ctx, &mut diagnostics);
         if matches!(ctx.role, FileRole::PublicHeader | FileRole::ModuleDoc) {
             declarations::check_structs(ctx, &mut diagnostics);
             declarations::check_function_declarations(ctx, &mut diagnostics);
