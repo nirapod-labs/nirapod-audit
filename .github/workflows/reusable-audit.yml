@@ -47,8 +47,8 @@ jobs:
         run: |
           mkdir -p ${{ inputs.working_directory }}
           cd ${{ inputs.working_directory }}
-          bun "$HOME/.nirapod/tools/nirapod-audit/apps/cli/src/index.tsx" audit --output sarif > audit-report.json || true
-          bun "$HOME/.nirapod/tools/nirapod-audit/apps/cli/src/index.tsx" audit --output markdown > /dev/null || true
+          bun "$HOME/.nirapod/tools/nirapod-audit/apps/cli/src/index.tsx" audit . --output sarif > audit-report.json || true
+          bun "$HOME/.nirapod/tools/nirapod-audit/apps/cli/src/index.tsx" audit . --output markdown > /dev/null || true
           LATEST_MD="$(find .nirapod/audit -maxdepth 1 -type f -name 'nirapod-report-*.md' | sort | tail -n 1)"
           if [ -n "$LATEST_MD" ]; then
             cp "$LATEST_MD" audit-report.md
