@@ -34,15 +34,31 @@
 //! [`load_config`]. This keeps CLI bootstrap work and future rule execution on
 //! the same validated config model.
 //!
+//! ## Phase 1 parser bootstrap
+//!
+//! The crate now includes tree-sitter parser scaffolding, embedded query files,
+//! file discovery, and file-context builders for C and C++ source trees. That
+//! is enough for the CLI to validate an audit target before real passes land.
+//!
 //! ## Example
 //!
 //! ```
-//! use nirapod_audit_core::{AuditConfig, PlatformHint, Severity};
+//! use nirapod_audit_core::{
+//!     detect_language, discover_audit_target, AuditConfig, PlatformHint, Severity, SourceLanguage,
+//! };
+//! use std::path::PathBuf;
 //!
 //! let config = AuditConfig::default();
 //! assert_eq!(config.max_function_lines, 60);
 //! assert_eq!(config.platform, PlatformHint::Auto);
+//! assert_eq!(detect_language("src/lib.rs"), Some(SourceLanguage::Rust));
+//!
+//! let fixture_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+//!     .join("../../tests/fixtures/compliant");
+//! let target = discover_audit_target(&fixture_dir, &config.ignore_paths)?;
+//! assert_eq!(target.files.len(), 1);
 //! assert_eq!(Severity::Error.as_str(), "error");
+//! # Ok::<(), Box<dyn std::error::Error>>(())
 //! ```
 
 #![warn(missing_docs)]
@@ -51,9 +67,21 @@
 #![deny(unsafe_code)]
 
 pub mod config;
+pub mod context;
+pub mod parser;
+pub mod pipeline;
 pub mod types;
 
 pub use config::{find_config_file, load_config, LoadedConfig, CONFIG_FILENAME};
+pub use context::{
+    build_file_context, build_project_context, detect_file_role, resolve_platform_hint,
+    ContextBuildError, FileContext, FileRole, ProjectContext,
+};
+pub use parser::{
+    build_parser, count_function_items, detect_language, parse_source, query_text, ParserError,
+    QueryText, SourceLanguage,
+};
+pub use pipeline::{discover_audit_target, AuditTarget, DiscoverAuditTargetError};
 pub use types::{
     AuditConfig, PlatformHint, RuleCategory, RuleOverride, RuleOverrideSeverity, Severity, Span,
 };

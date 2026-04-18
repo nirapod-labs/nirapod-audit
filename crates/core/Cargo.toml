@@ -11,5 +11,11 @@ repository.workspace = true
 description = "Core analysis types and workspace scaffolding for nirapod-audit."
 
 [dependencies]
+globset.workspace = true
 serde.workspace = true
+streaming-iterator.workspace = true
 toml.workspace = true
+tree-sitter.workspace = true
+tree-sitter-c.workspace = true
+tree-sitter-cpp.workspace = true
+walkdir.workspace = true
