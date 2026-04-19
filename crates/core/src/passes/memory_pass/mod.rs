@@ -3,7 +3,12 @@
 
 //! Memory-safety checks.
 
-use crate::{Diagnostic, FileContext, Pass, SourceLanguage};
+mod checks;
+mod helpers;
+#[cfg(test)]
+mod tests;
+
+use crate::{Diagnostic, FileContext, FileRole, Pass, SourceLanguage};
 
 const C_CPP_LANGUAGES: &[SourceLanguage] = &[SourceLanguage::C, SourceLanguage::Cpp];
 
@@ -20,7 +25,19 @@ impl Pass for MemoryPass {
         Some(C_CPP_LANGUAGES)
     }
 
-    fn run(&self, _ctx: &FileContext) -> Vec<Diagnostic> {
-        Vec::new()
+    fn run(&self, ctx: &FileContext) -> Vec<Diagnostic> {
+        if matches!(
+            ctx.role,
+            FileRole::ThirdParty | FileRole::Asm | FileRole::Cmake | FileRole::Config
+        ) {
+            return Vec::new();
+        }
+
+        let mut diagnostics = Vec::new();
+        checks::check_array_bounds(ctx, &mut diagnostics);
+        checks::check_pointer_null_guard(ctx, &mut diagnostics);
+        checks::check_size_overflow(ctx, &mut diagnostics);
+        checks::check_size_narrowing(ctx, &mut diagnostics);
+        diagnostics
     }
 }
