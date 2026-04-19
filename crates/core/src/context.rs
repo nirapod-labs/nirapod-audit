@@ -192,10 +192,18 @@ pub fn resolve_platform_hint(raw: &str, config_hint: PlatformHint) -> PlatformHi
     if raw.contains("nrf5340") || raw.contains("NRF5340") || raw.contains("CC312") {
         return PlatformHint::Nrf5340;
     }
-    if raw.contains("nrf52840") || raw.contains("NRF52840") || raw.contains("CC310") {
+    if raw.contains("nrf52840")
+        || raw.contains("NRF52840")
+        || raw.contains("CC310")
+        || raw.contains("nrf_crypto_")
+    {
         return PlatformHint::Nrf52840;
     }
-    if raw.contains("IDF_TARGET_ESP32") || raw.contains("esp_aes.h") {
+    if raw.contains("IDF_TARGET_ESP32")
+        || raw.contains("esp_aes.h")
+        || raw.contains("ESP_LOG")
+        || raw.contains("esp_aes_")
+    {
         return PlatformHint::Esp32;
     }
     PlatformHint::Host

@@ -85,7 +85,7 @@ pub use parser::{
     build_parser, count_function_items, detect_language, parse_source, query_text, ParserError,
     QueryText, SourceLanguage,
 };
-pub use passes::{AstPass, LexPass, NasaPass};
+pub use passes::{AstPass, CryptoPass, LexPass, MemoryPass, NasaPass, StylePass};
 pub use pipeline::pass::Pass;
 pub use pipeline::{discover_audit_target, AuditTarget, DiscoverAuditTargetError};
 pub use rules::{
