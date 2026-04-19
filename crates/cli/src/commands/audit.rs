@@ -8,6 +8,7 @@
 
 use crate::print::{
     diagnostic::render_diagnostic,
+    progress::ProgressReporter,
     summary::{render_summary, AuditSummaryView},
 };
 use anyhow::{Context, Result};
@@ -15,14 +16,14 @@ use nirapod_audit_core::{
     build_file_context, build_project_context, discover_audit_target, load_config, AstPass,
     ContextBuildError, Diagnostic, LexPass, ParserError, Pass, Severity,
 };
-use std::{fs, path::Path};
+use std::{fs, path::Path, process::ExitCode};
 
 /// Prepares an audit target and prints the discovery summary.
 ///
 /// # Errors
 ///
 /// Returns an error if config loading, file reads, or parsing fails.
-pub fn run(path: &Path) -> Result<()> {
+pub fn run(path: &Path) -> Result<ExitCode> {
     let loaded = load_config(path)?;
     let target = discover_audit_target(path, &loaded.config.ignore_paths)?;
     let project = build_project_context(
@@ -45,17 +46,19 @@ pub fn run(path: &Path) -> Result<()> {
         warnings: 0,
         infos: 0,
     };
+    let mut progress = ProgressReporter::new();
 
-    println!(
+    progress.emit(&format!(
         "auditing {} with {} files using {}",
         target.root_dir.display(),
         target.files.len(),
         config_source
-    );
+    ))?;
+    progress.emit("\n")?;
 
     for (index, file) in target.files.iter().enumerate() {
         let relative = file.strip_prefix(&target.root_dir).unwrap_or(file);
-        println!("[{}/{}] {}", index + 1, target.files.len(), relative.display());
+        progress.update(index + 1, target.files.len(), &relative.display().to_string())?;
 
         let raw = fs::read_to_string(file)
             .with_context(|| format!("failed to read source file {}", file.display()))?;
@@ -63,7 +66,7 @@ pub fn run(path: &Path) -> Result<()> {
             Ok(ctx) => ctx,
             Err(ContextBuildError::Parse(ParserError::UnsupportedLanguage(_))) => {
                 summary.skipped_files += 1;
-                println!("  skipped: language detected but parser not ported yet");
+                progress.emit("  skipped: language detected but parser not ported yet\n")?;
                 continue;
             }
             Err(error) => return Err(error.into()),
@@ -74,13 +77,18 @@ pub fn run(path: &Path) -> Result<()> {
         update_summary(&mut summary, &diagnostics);
 
         for diagnostic in diagnostics {
-            print!("{}", render_diagnostic(&diagnostic));
+            progress.emit(&render_diagnostic(&diagnostic))?;
         }
     }
 
-    print!("{}", render_summary(summary));
+    progress.finish()?;
+    progress.emit(&render_summary(summary))?;
 
-    Ok(())
+    Ok(if summary.errors == 0 {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
 }
 
 fn run_passes(passes: &[&dyn Pass], ctx: &nirapod_audit_core::FileContext) -> Vec<Diagnostic> {

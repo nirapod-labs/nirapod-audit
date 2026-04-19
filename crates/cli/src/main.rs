@@ -17,6 +17,7 @@ mod print;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use std::process::ExitCode;
 use std::path::PathBuf;
 
 /// Rust CLI for the `nirapod-audit` migration.
@@ -68,12 +69,28 @@ enum Command {
 /// # Errors
 ///
 /// Returns an error if writing command output to stdout fails.
-fn main() -> Result<()> {
+fn main() -> ExitCode {
+    match run() {
+        Ok(code) => code,
+        Err(error) => {
+            eprintln!("Error: {error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run() -> Result<ExitCode> {
     let cli = Cli::parse();
 
     match cli.command {
         Command::Audit { path } => commands::audit::run(&path),
-        Command::Rules => commands::rules::run(),
-        Command::Explain { id } => commands::explain::run(&id),
+        Command::Rules => {
+            commands::rules::run()?;
+            Ok(ExitCode::SUCCESS)
+        }
+        Command::Explain { id } => {
+            commands::explain::run(&id)?;
+            Ok(ExitCode::SUCCESS)
+        }
     }
 }

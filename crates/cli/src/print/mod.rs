@@ -7,4 +7,5 @@
 //! added later without growing the command handlers into formatting modules.
 
 pub mod diagnostic;
+pub mod progress;
 pub mod summary;
