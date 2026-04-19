@@ -14,7 +14,7 @@ use crate::print::{
 use anyhow::{Context, Result};
 use nirapod_audit_core::{
     build_file_context, build_project_context, discover_audit_target, load_config, AstPass,
-    ContextBuildError, Diagnostic, LexPass, ParserError, Pass, Severity,
+    ContextBuildError, Diagnostic, LexPass, NasaPass, ParserError, Pass, Severity,
 };
 use std::{fs, path::Path, process::ExitCode};
 
@@ -38,7 +38,8 @@ pub fn run(path: &Path) -> Result<ExitCode> {
         .unwrap_or_else(|| String::from("defaults"));
     let lex = LexPass;
     let ast = AstPass;
-    let passes: [&dyn Pass; 2] = [&lex, &ast];
+    let nasa = NasaPass;
+    let passes: [&dyn Pass; 3] = [&lex, &ast, &nasa];
     let mut summary = AuditSummaryView {
         scanned_files: 0,
         skipped_files: 0,

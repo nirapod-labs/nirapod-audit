@@ -5,6 +5,8 @@
 
 mod ast_pass;
 mod lex_pass;
+mod nasa_pass;
 
 pub use ast_pass::AstPass;
 pub use lex_pass::LexPass;
+pub use nasa_pass::NasaPass;

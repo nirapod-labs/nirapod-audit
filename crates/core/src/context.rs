@@ -52,6 +52,10 @@ pub struct FileContext {
     pub language: SourceLanguage,
     /// `true` for C++ sources and headers.
     pub is_cpp: bool,
+    /// Maximum allowed non-comment, non-blank lines in a function body.
+    pub max_function_lines: usize,
+    /// Minimum number of assertions expected in non-trivial functions.
+    pub min_assertions: usize,
 }
 
 /// Errors returned while constructing a [`FileContext`].
@@ -236,6 +240,8 @@ pub fn build_file_context(
         platform: resolve_platform_hint(raw, project.config.platform),
         language,
         is_cpp: language == SourceLanguage::Cpp,
+        max_function_lines: project.config.max_function_lines,
+        min_assertions: project.config.min_assertions,
     })
 }
 
