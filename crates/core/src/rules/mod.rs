@@ -9,7 +9,9 @@
 //! into one change.
 
 pub mod doxygen;
+pub mod crypto;
 pub mod license;
+pub mod memory;
 pub mod nasa;
 pub mod refs;
 pub mod style;
@@ -17,8 +19,10 @@ pub mod style;
 use crate::Rule;
 use std::sync::LazyLock;
 
+pub use crypto::CRYPTO_RULES;
 pub use doxygen::DOXYGEN_RULES;
 pub use license::LICENSE_RULES;
+pub use memory::MEMORY_RULES;
 pub use nasa::NASA_RULES;
 pub use style::STYLE_RULES;
 
@@ -28,6 +32,8 @@ pub static ALL_RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
         .iter()
         .chain(DOXYGEN_RULES.iter())
         .chain(NASA_RULES.iter())
+        .chain(CRYPTO_RULES.iter())
+        .chain(MEMORY_RULES.iter())
         .chain(STYLE_RULES.iter())
         .cloned()
         .collect()
@@ -54,7 +60,7 @@ mod tests {
 
     #[test]
     fn collects_all_rules() {
-        assert_eq!(ALL_RULES.len(), 40);
+        assert_eq!(ALL_RULES.len(), 55);
     }
 
     #[test]
@@ -79,5 +85,17 @@ mod tests {
     fn finds_nasa_rule_by_id() {
         let rule = find_rule("NRP-NASA-006").expect("expected nasa rule");
         assert_eq!(rule.title, "function-too-long");
+    }
+
+    #[test]
+    fn finds_crypto_rule_by_id() {
+        let rule = find_rule("NRP-CRYPTO-001").expect("expected crypto rule");
+        assert_eq!(rule.title, "memset-zeroization");
+    }
+
+    #[test]
+    fn finds_memory_rule_by_id() {
+        let rule = find_rule("NRP-MEM-002").expect("expected memory rule");
+        assert_eq!(rule.title, "ptr-no-null-check");
     }
 }

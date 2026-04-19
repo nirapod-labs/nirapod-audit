@@ -1,17 +1,19 @@
 // SPDX-License-Identifier: APACHE-2.0
 // SPDX-FileCopyrightText: 2026 Nirapod Contributors
 
-//! Static rule descriptors for the lexical `STYLE` migration slice.
-//!
-//! Phase 2 only needs the lexical style checks that run in [`crate::LexPass`].
-//! The remaining style rules will land later with the dedicated style pass.
+//! Static rule descriptors for the `STYLE` category.
 
-use crate::{Rule, RuleCategory, Severity};
+use crate::{Rule, RuleCategory, Severity, SourceLanguage};
 use std::sync::LazyLock;
 
-use super::refs::{local_ref, AI_PATTERNS_DB, DOC_SKILL, WORD_TIERS, WRITE_LIKE_HUMAN};
+use super::refs::{
+    local_ref, AI_PATTERNS_DB, DOC_SKILL, EMBEDDED_SKILL, PLATFORM_CRYPTO, WORD_TIERS,
+    WRITE_LIKE_HUMAN,
+};
 
-/// All lexical style rules currently defined in the Rust registry.
+const LANG_C_CPP: &[SourceLanguage] = &[SourceLanguage::C, SourceLanguage::Cpp];
+
+/// All style rules currently defined in the Rust registry.
 pub static STYLE_RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
     vec![
         Rule {
@@ -69,6 +71,48 @@ pub static STYLE_RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
             ],
             languages: None,
         },
+        Rule {
+            id: "NRP-STYLE-003".to_owned(),
+            category: RuleCategory::Style,
+            severity: Severity::Warning,
+            title: "brief-single-word".to_owned(),
+            description: "@brief is a single word or uses a known-generic phrase.".to_owned(),
+            rationale: concat!(
+                "A generic brief like \"Driver\" or \"Parser\" does not explain any ",
+                "behavior. The brief should say what the file or function does, not ",
+                "just what kind of thing it is."
+            )
+            .to_owned(),
+            references: vec![local_ref(
+                "File Structure and Layout",
+                EMBEDDED_SKILL,
+                Some("Part 1 - Section 1.1"),
+            )],
+            languages: Some(LANG_C_CPP.to_vec()),
+        },
+        Rule {
+            id: "NRP-STYLE-004".to_owned(),
+            category: RuleCategory::Style,
+            severity: Severity::Info,
+            title: "hardware-word-missing".to_owned(),
+            description:
+                "Crypto driver function doc does not mention CC310, CC312, or ESP32 in @details."
+                    .to_owned(),
+            rationale: concat!(
+                "Crypto driver docs should state which hardware backend they rely on. ",
+                "That context matters during integration, debugging, and platform bring-up."
+            )
+            .to_owned(),
+            references: vec![
+                local_ref(
+                    "Platform-Specific Crypto Rules",
+                    EMBEDDED_SKILL,
+                    Some("Part 5 - Platform-Specific Crypto Rules"),
+                ),
+                local_ref("Platform Crypto Reference", PLATFORM_CRYPTO, None),
+            ],
+            languages: Some(LANG_C_CPP.to_vec()),
+        },
     ]
 });
 
@@ -78,9 +122,10 @@ mod tests {
     use crate::{RuleCategory, Severity};
 
     #[test]
-    fn exposes_lexical_style_rules() {
-        assert_eq!(STYLE_RULES.len(), 2);
+    fn exposes_style_rules() {
+        assert_eq!(STYLE_RULES.len(), 4);
         assert_eq!(STYLE_RULES[0].category, RuleCategory::Style);
         assert_eq!(STYLE_RULES[1].severity, Severity::Warning);
+        assert_eq!(STYLE_RULES[3].severity, Severity::Info);
     }
 }

@@ -88,7 +88,10 @@ pub use parser::{
 pub use passes::{AstPass, LexPass, NasaPass};
 pub use pipeline::pass::Pass;
 pub use pipeline::{discover_audit_target, AuditTarget, DiscoverAuditTargetError};
-pub use rules::{find_rule, ALL_RULES, DOXYGEN_RULES, LICENSE_RULES, NASA_RULES, STYLE_RULES};
+pub use rules::{
+    find_rule, ALL_RULES, CRYPTO_RULES, DOXYGEN_RULES, LICENSE_RULES, MEMORY_RULES, NASA_RULES,
+    STYLE_RULES,
+};
 pub use types::{
     AuditConfig, AuditEvent, AuditSummary, Diagnostic, DocSystem, FileResult, FileRole,
     PlatformHint, RelatedSpan, Rule, RuleCategory, RuleOverride, RuleOverrideSeverity,

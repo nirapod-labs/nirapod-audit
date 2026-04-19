@@ -29,6 +29,12 @@ pub const NASA_SAFETY: &str = concat!(
     "/nasa-safety-rules.md"
 );
 
+/// Platform-specific crypto reference used by the embedded engineering skill.
+pub const PLATFORM_CRYPTO: &str = concat!(
+    ".agents/skills/nirapod-embedded-engineering/references",
+    "/platform-crypto.md"
+);
+
 /// Embedded-engineering writing style reference.
 pub const WRITE_LIKE_HUMAN: &str = concat!(
     ".agents/skills/nirapod-embedded-engineering/references",
