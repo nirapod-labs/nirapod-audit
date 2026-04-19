@@ -5,6 +5,7 @@
 
 mod control_flow;
 mod helpers;
+mod scope;
 mod structure;
 #[cfg(test)]
 mod tests;
@@ -43,6 +44,9 @@ impl Pass for NasaPass {
         structure::check_function_length(ctx, &mut diagnostics);
         structure::check_assertions(ctx, &mut diagnostics);
         structure::check_macros(ctx, &mut diagnostics);
+        scope::check_unchecked_returns(ctx, &mut diagnostics);
+        scope::check_globals(ctx, &mut diagnostics);
+        scope::check_mutable_where_const(ctx, &mut diagnostics);
         diagnostics
     }
 }

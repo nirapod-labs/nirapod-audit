@@ -72,6 +72,65 @@ fn non_trivial_function_without_assertions_is_reported() {
     fs::remove_dir_all(root).expect("failed to remove temp directory");
 }
 
+#[test]
+fn discarded_non_void_local_call_is_reported() {
+    let root = temp_dir("nasa-return");
+    let file = root.join("unchecked.c");
+    fs::create_dir_all(&root).expect("failed to create temp directory");
+    fs::write(
+        &file,
+        "int status(void) {\n    return 1;\n}\n\nvoid caller(void) {\n    status();\n}\n",
+    )
+    .expect("failed to write nasa return fixture");
+
+    let raw = fs::read_to_string(&file).expect("failed to read nasa return fixture");
+    let project = build_project_context(&root, vec![file.clone()], AuditConfig::default());
+    let context = build_file_context(&file, &raw, &project).expect("failed to build context");
+
+    let diagnostics = NasaPass.run(&context);
+    assert!(diagnostics.iter().any(|diagnostic| diagnostic.rule.id == "NRP-NASA-008"));
+
+    fs::remove_dir_all(root).expect("failed to remove temp directory");
+}
+
+#[test]
+fn initialized_global_is_reported() {
+    let root = temp_dir("nasa-global");
+    let file = root.join("global.c");
+    fs::create_dir_all(&root).expect("failed to create temp directory");
+    fs::write(&file, "int global_counter = 0;\n").expect("failed to write nasa global fixture");
+
+    let raw = fs::read_to_string(&file).expect("failed to read nasa global fixture");
+    let project = build_project_context(&root, vec![file.clone()], AuditConfig::default());
+    let context = build_file_context(&file, &raw, &project).expect("failed to build context");
+
+    let diagnostics = NasaPass.run(&context);
+    assert!(diagnostics.iter().any(|diagnostic| diagnostic.rule.id == "NRP-NASA-011"));
+
+    fs::remove_dir_all(root).expect("failed to remove temp directory");
+}
+
+#[test]
+fn immutable_local_without_const_is_reported() {
+    let root = temp_dir("nasa-const");
+    let file = root.join("const.c");
+    fs::create_dir_all(&root).expect("failed to create temp directory");
+    fs::write(
+        &file,
+        "int compute(int input) {\n    int threshold = 10;\n    return input + threshold;\n}\n",
+    )
+    .expect("failed to write nasa const fixture");
+
+    let raw = fs::read_to_string(&file).expect("failed to read nasa const fixture");
+    let project = build_project_context(&root, vec![file.clone()], AuditConfig::default());
+    let context = build_file_context(&file, &raw, &project).expect("failed to build context");
+
+    let diagnostics = NasaPass.run(&context);
+    assert!(diagnostics.iter().any(|diagnostic| diagnostic.rule.id == "NRP-NASA-012"));
+
+    fs::remove_dir_all(root).expect("failed to remove temp directory");
+}
+
 fn fixture_path(relative: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!("../../{relative}"))
 }

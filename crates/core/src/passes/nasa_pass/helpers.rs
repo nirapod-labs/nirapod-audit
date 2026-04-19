@@ -72,6 +72,12 @@ pub(super) fn call_target_text<'a>(node: Node<'_>, raw: &'a str) -> Option<&'a s
     node_text(function, raw)
 }
 
+pub(super) fn returns_void(node: Node<'_>, raw: &str) -> bool {
+    node.child_by_field_name("type")
+        .and_then(|type_node| node_text(type_node, raw))
+        .is_some_and(|text| text.trim() == "void")
+}
+
 pub(super) fn count_code_lines(lines: &[String], start_row: usize, end_row: usize) -> usize {
     let mut count = 0;
     let mut in_block_comment = false;
@@ -157,6 +163,24 @@ pub(super) fn macro_name_and_shape(line: &str) -> Option<(&str, bool)> {
 
 pub(super) fn is_exempt_macro(name: &str) -> bool {
     EXEMPT_MACROS.contains(&name) || name.ends_with("_H") || name.ends_with("_H_")
+}
+
+pub(super) fn function_definitions<'tree>(root: Node<'tree>) -> Vec<Node<'tree>> {
+    let mut nodes = Vec::new();
+    collect_nodes_by_kind(root, "function_definition", &mut nodes);
+    nodes
+}
+
+pub(super) fn declaration_nodes<'tree>(root: Node<'tree>) -> Vec<Node<'tree>> {
+    let mut nodes = Vec::new();
+    collect_nodes_by_kind(root, "declaration", &mut nodes);
+    nodes
+}
+
+pub(super) fn init_declarator_nodes<'tree>(node: Node<'tree>) -> Vec<Node<'tree>> {
+    let mut nodes = Vec::new();
+    collect_nodes_by_kind(node, "init_declarator", &mut nodes);
+    nodes
 }
 
 fn mentions_bound(line: &str) -> bool {
