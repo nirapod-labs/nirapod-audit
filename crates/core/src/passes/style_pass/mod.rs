@@ -3,6 +3,11 @@
 
 //! Higher-level documentation style checks.
 
+mod checks;
+mod helpers;
+#[cfg(test)]
+mod tests;
+
 use crate::{Diagnostic, FileContext, Pass, SourceLanguage};
 
 const C_CPP_LANGUAGES: &[SourceLanguage] = &[SourceLanguage::C, SourceLanguage::Cpp];
@@ -20,7 +25,10 @@ impl Pass for StylePass {
         Some(C_CPP_LANGUAGES)
     }
 
-    fn run(&self, _ctx: &FileContext) -> Vec<Diagnostic> {
-        Vec::new()
+    fn run(&self, ctx: &FileContext) -> Vec<Diagnostic> {
+        let mut diagnostics = Vec::new();
+        checks::check_generic_briefs(ctx, &mut diagnostics);
+        checks::check_crypto_hardware_words(ctx, &mut diagnostics);
+        diagnostics
     }
 }
