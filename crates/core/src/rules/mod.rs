@@ -10,6 +10,7 @@
 
 pub mod doxygen;
 pub mod license;
+pub mod nasa;
 pub mod refs;
 pub mod style;
 
@@ -18,6 +19,7 @@ use std::sync::LazyLock;
 
 pub use doxygen::DOXYGEN_RULES;
 pub use license::LICENSE_RULES;
+pub use nasa::NASA_RULES;
 pub use style::STYLE_RULES;
 
 /// Every rule currently defined in the Rust migration.
@@ -25,6 +27,7 @@ pub static ALL_RULES: LazyLock<Vec<Rule>> = LazyLock::new(|| {
     LICENSE_RULES
         .iter()
         .chain(DOXYGEN_RULES.iter())
+        .chain(NASA_RULES.iter())
         .chain(STYLE_RULES.iter())
         .cloned()
         .collect()
@@ -51,7 +54,7 @@ mod tests {
 
     #[test]
     fn collects_all_rules() {
-        assert_eq!(ALL_RULES.len(), 28);
+        assert_eq!(ALL_RULES.len(), 40);
     }
 
     #[test]
@@ -70,5 +73,11 @@ mod tests {
     fn finds_style_rule_by_id() {
         let rule = find_rule("NRP-STYLE-001").expect("expected style rule");
         assert_eq!(rule.title, "banned-word");
+    }
+
+    #[test]
+    fn finds_nasa_rule_by_id() {
+        let rule = find_rule("NRP-NASA-006").expect("expected nasa rule");
+        assert_eq!(rule.title, "function-too-long");
     }
 }

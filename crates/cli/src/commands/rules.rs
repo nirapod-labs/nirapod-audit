@@ -45,13 +45,14 @@ fn render_rule_list() -> String {
 #[cfg(test)]
 mod tests {
     use super::render_rule_list;
+    use nirapod_audit_core::ALL_RULES;
 
     #[test]
     fn renders_rule_catalog() {
         let rendered = render_rule_list();
-        assert!(rendered.contains("28 migrated rules"));
+        assert!(rendered.contains(&format!("{} migrated rules", ALL_RULES.len())));
         assert!(rendered.contains("NRP-LIC-001"));
         assert!(rendered.contains("missing-spdx-identifier"));
-        assert!(rendered.contains("NRP-DOX-022"));
+        assert!(rendered.contains("NRP-NASA-012"));
     }
 }

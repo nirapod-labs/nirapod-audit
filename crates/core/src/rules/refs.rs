@@ -23,6 +23,12 @@ pub const DOXYGEN_FULL: &str = concat!(
     "/doxygen-full.md"
 );
 
+/// NASA JPL safety-rules reference used by the embedded engineering skill.
+pub const NASA_SAFETY: &str = concat!(
+    ".agents/skills/nirapod-embedded-engineering/references",
+    "/nasa-safety-rules.md"
+);
+
 /// Embedded-engineering writing style reference.
 pub const WRITE_LIKE_HUMAN: &str = concat!(
     ".agents/skills/nirapod-embedded-engineering/references",
