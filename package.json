@@ -1,6 +1,8 @@
 {
   "name": "@nirapod-audit/workspace",
   "private": true,
+  "description": "Custom rules-based audit toolchain for Nirapod repos. Point it at any project, lib, or codebase and it tells you what's wrong.",
+  "keywords": ["nirapod", "audit", "toolchain", "code-quality", "static-analysis", "typescript", "linting"],
   "workspaces": [
     "packages/protocol",
     "packages/core",
@@ -13,6 +15,8 @@
     "dev": "bun run --filter '@nirapod-audit/cli' dev"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "typescript": "^6.0.2"
   }
 }
