@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: APACHE-2.0
+# SPDX-FileCopyrightText: 2026 Nirapod Contributors
+
+[package]
+name = "nirapod-audit"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Rust CLI for the nirapod-audit migration."
+
+[dependencies]
+anyhow.workspace = true
+clap.workspace = true
+nirapod-audit-core = { path = "../core" }

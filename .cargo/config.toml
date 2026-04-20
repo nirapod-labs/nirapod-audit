@@ -1,0 +1,13 @@
+# SPDX-License-Identifier: APACHE-2.0
+# SPDX-FileCopyrightText: 2026 Nirapod Contributors
+
+[build]
+rustflags = ["-D", "warnings"]
+rustdocflags = [
+    "-D",
+    "warnings",
+    "-D",
+    "missing_docs",
+    "-D",
+    "rustdoc::broken_intra_doc_links",
+]
